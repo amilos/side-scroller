@@ -1,14 +1,14 @@
-### Final game project
+## Final game project
 
-## Sound
+### Sound
 
-## Platforms
+### Platforms
 
-## Enemies
+### Enemies
 
-## Advanced graphics and animations
+### Advanced graphics and animations
 
-## Code organization
+### Code organization
 	- constructor functions
 	- factory methods
 	- make sure your code is elegant
