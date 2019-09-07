@@ -1,0 +1,5 @@
+node_modules
+assets/Vibrant_*.wav
+package-lock.json
+assets/.DS_Store
+.DS_Store
