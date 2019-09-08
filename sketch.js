@@ -4,6 +4,21 @@
 
 //@ts-check
 
+var gameState = {
+	RUNNING: 0,
+	LEVEL_FINISHED: 1,
+	GAME_OVER: 2,
+	GAME_FINISHED: 3
+}
+
+var characterState = {
+	IDLE: 0,
+	DEAD: 1,
+	WINNING: 2
+}
+
+const DEVELOPER_MODE = false;
+
 // Game world and character position variables.
 var gameChar_x;
 var gameChar_y;
@@ -30,20 +45,26 @@ var canyons;
 var collectables;
 var platforms;
 var enemies;
+var flagpole;
+var character;
 
 // Game mechanics variables.
+var game;
+var player;
+
 var game_score;
-var flagpole;
 var lives;
 
 var jumpSound;
 var collectSound;
 var plummetSound;
-var backgroundSound;
+var backgroundMusic;
 var startGameSound;
 var gameOverSound;
 var lifeLostSound;
 var levelUpSound;
+
+var backgroundMusicOn = false;
 
 var start, elapsed;
 
@@ -54,8 +75,8 @@ var levelUpSoundPlayed;
 function preload() {
 	soundFormats("mp3");
 
-	backgroundSound = loadSound("assets/background-loop.mp3");
-	backgroundSound.setVolume(0.05);
+	backgroundMusic = loadSound("assets/background-loop.mp3");
+	backgroundMusic.setVolume(0.05);
 
 	lifeLostSound = loadSound("assets/life-lost.mp3");
 	lifeLostSound.setVolume(0.05);
@@ -85,6 +106,7 @@ function setup() {
 	floorPos_y = height * 3 / 4;
 	lives = 3;
 	game_score = 0;
+	game = new Game();
 
 	// Initialize the state of the game world.
 	startGame();
@@ -95,14 +117,17 @@ function startGame() {
 	// Initial position of game character.
 	gameChar_x = 200;
 	gameChar_y = floorPos_y;
+	// Variable to control the background scrolling.
+	scrollPos = 0;
 
-	if (lives == 3) {
+	if (game.lives == 3) {
 		start = new Date().getTime();
 		game_score = 0;
 	}
 
-	// Variable to control the background scrolling.
-	scrollPos = 0;
+	character = new Character(200, game.floor);
+
+
 
 	// Variable to store the real position of the gameChar in the game
 	// world. Needed for collision detection.
@@ -113,7 +138,7 @@ function startGame() {
 	isMovingRight = false;
 	isFalling = false;
 	isPlummeting = false;
-	var isOnPlatform = false;
+	isOnPlatform = false;
 
 	gameOverSoundPlayed = false;
 	levelUpSoundPlayed = false;
@@ -335,202 +360,18 @@ function startGame() {
 	this.enemies.push(new Enemy(1200, floorPos_y - 5, 250, -1));
 	this.enemies.push(new Enemy(1600, floorPos_y - 5, 150));
 
-	flagpole = {
-		x: 1920,
-		isReached: false
-	}
+	flagpole = new Flagpole(1920);
 
 	if (!plummetSound.isPlaying() && !lifeLostSound.isPlaying()) {
 		// startGameSound.play();
 	}
 }
 
-function draw() {
 
-	// Blue sky as a background.
-	background("LightSkyBlue");
-
-	// if (backgroundSound.isLoaded()) {
-	// 	if (!backgroundSound.isPlaying()) {
-	// 		backgroundSound.isLooping(true);
-	// 		backgroundSound.play();
-	// 	}
-	// }
-
-	// Green ground.
+function drawGround() {
 	noStroke();
 	fill(0, 155, 0);
 	rect(0, floorPos_y, width, height / 4);
-
-	// push();
-	// translate(scrollPos, 0);
-	// for (var i = -500; i < 2000; i += 50) {
-	// 	strokeWeight(0.5);
-	// 	stroke("Gray");
-	// 	line(i, 0, i, height);
-	// 	noStroke();
-	// 	fill(255);
-	// 	textSize(10);
-	// 	text(`${i}`, i - 10, 10);
-	// }
-	// pop();
-
-
-	// Draw cloud in the background with parallax
-	push();
-	translate(scrollPos / 2, 0);
-	drawClouds();
-	pop();
-
-	// Draw mountains with parallax
-	push();
-	translate(scrollPos / 1.5, 0);
-	drawMountains();
-	pop();
-
-	// Draw the rest of the scrolling scenery and objects
-	push();
-	translate(scrollPos, 0);
-
-	drawTrees();
-
-	// Draw platforms.
-	drawPlatforms();
-
-	// Draw canyons. 
-	drawCanyons();
-
-	// Detect when character plummets in the canyon.
-	isPlummeting = isOverCanyon && gameChar_y >= floorPos_y;
-
-
-
-	// Check if any collectables are picked. 
-	drawCollectables();
-
-
-
-	// Check if the flagpole is reached.
-	if (!flagpole.isReached) {
-		checkFlagpole();
-	}
-	// Draw the flagpole
-	renderFlagpole();
-
-	for (var i = 0; i < enemies.length; i++) {
-		enemies[i].render();
-		var isContact = enemies[i].checkContact(gameChar_world_x, gameChar_y);
-		if (isContact) {
-			if (lives > 0) {
-				lives--;
-				if (!lifeLostSound.isPlaying()) {
-					lifeLostSound.play();
-				}
-				startGame();
-				break;
-			}
-		}
-	}
-	pop();
-
-	// Draw current game score.
-	drawGameScore();
-
-	if (lives < 1) {
-		if (!gameOverSound.isPlaying() && !gameOverSoundPlayed) {
-			gameOverSound.play();
-			gameOverSoundPlayed = true;
-		}
-
-		var message = "Game over.\r\nPress space to continue.";
-		push();
-		textAlign(CENTER);
-		textSize(40);
-		text(message, width / 2, height / 3 + 60);
-		pop();
-		return;
-	}
-
-	if (flagpole.isReached) {
-		var message = "Level complete.\r\nPress space to continue.";
-		push();
-		textAlign(CENTER);
-		textSize(40);
-		text(message, width / 2, height / 3 + 30);
-		pop();
-		drawGameChar();
-		return;
-	}
-
-	// Draw game character.
-	drawGameChar();
-
-	// Logic to make the game character move or the background scroll.
-	// No movement when plummeting.
-	if (!isPlummeting) {
-		// If the left arrow key is pressed.
-		if (isMovingLeft) {
-			// Move the game character if we did not step into 
-			// the first 20% of the canvas width.
-			if (gameChar_x > width * 0.2) {
-				gameChar_x -= 5;
-			} else {
-				// Scroll the background to the right when we reach 
-				// the first 20% of canvas width.
-				scrollPos += 5;
-			}
-		}
-		// If the right arrow key is pressed.
-		if (isMovingRight) {
-			// Move the game character if we did not step into 
-			// the first 20% of the canvas width.
-			if (gameChar_x < width * 0.8) {
-				gameChar_x += 5;
-			} else {
-				// Scroll the background to the left when we reach 
-				// the first 20% of canvas width.
-				scrollPos -= 5;
-			}
-		}
-	}
-
-	// Logic to make the game character rise and fall.
-
-	isFalling = gameChar_y < floorPos_y;
-	// Add gravity when character is above floor.
-	if (isFalling) {
-		//Check if the game character is on one of the platforms
-		for (var i = 0; i < platforms.length; i++) {
-			isOnPlatform = platforms[i].checkContact(gameChar_world_x, gameChar_y);
-			if (isOnPlatform) {
-				break;
-			}
-		}
-		// Fall if not standing on platform
-		if (isOnPlatform) {
-			isFalling = false;
-		} else {
-			gameChar_y += 4;
-		}
-	}
-	// Gravity is somewhat stronger in the canyon.
-	if (isPlummeting) {
-		gameChar_y += 6;
-		//gameChar_x = canyonCenter;
-		// if (gameChar_x < canyonCenter) {
-		// 	gameChar_x += (canyonCenter - gameChar_x) / 2;
-		// } else {
-		// 	gameChar_x -= (gameChar_x - canyonCenter - 30) / 2;
-		// }
-	}
-
-	// Check whether character fell of the screen and died.
-	checkPlayerDie();
-
-	// Update real position of gameChar for collision detection.
-	gameChar_world_x = gameChar_x - scrollPos;
-
-
 }
 
 // ---------------------
@@ -540,8 +381,7 @@ function draw() {
 function keyPressed() {
 	// If statements to control the animation of the character 
 	// when keys are pressed.
-	// @ts-ignore
-
+	game.onKeyPressed();
 	if (flagpole.isReached) {
 		if (key == " ") {
 			startGame();
@@ -551,9 +391,9 @@ function keyPressed() {
 		}
 	}
 
-	if (lives < 1) {
+	if (game.lives < 1) {
 		if (key == " ") {
-			lives = 3;
+			game.lives = 3;
 			startGame();
 			return;
 		} else {
@@ -577,10 +417,10 @@ function keyPressed() {
 function keyReleased() {
 	// if statements to control the animation of the character 
 	// when keys are released.
-	// @ts-ignore
+	game.onKeyReleased();
+
 	if (keyCode == LEFT_ARROW) {
 		isMovingLeft = false;
-		// @ts-ignore
 	} else if (keyCode == RIGHT_ARROW) {
 		isMovingRight = false;
 	}
@@ -1065,9 +905,9 @@ function standingFacingForwards() {
 }
 
 
-// ----------------------------
-// Background render functions.
-// ----------------------------
+/*************************************
+ Functions that render scenery objects
+ *************************************/
 
 function drawClouds() {
 	for (var i = 0; i < clouds.length; i++) {
@@ -1101,13 +941,6 @@ function drawMountains() {
 		drawMountain(mountains[i]);
 	}
 }
-
-function drawPlatforms(){
-	for (var i = 0; i < platforms.length; i++) {
-		platforms[i].update();
-		platforms[i].draw();
-	}
-}	
 
 function drawMountain(mountain) {
 	var x = mountain.x;
@@ -1159,185 +992,104 @@ function drawTree(tree) {
 	pop();
 }
 
-// ---------------------------------
-// Canyon render and check functions
-// ---------------------------------
 
-function drawCanyons(){
+/***************************************** 
+ Functions that render interactive objects
+ *****************************************/
+
+function drawPlatforms() {
+	for (var i = 0; i < platforms.length; i++) {
+		platforms[i].update();
+		platforms[i].draw();
+	}
+}
+
+function drawCanyons() {
 	isOverCanyon = false;
 	for (var i = 0; i < canyons.length; i++) {
 		canyons[i].check();
 		canyons[i].draw();
 		isOverCanyon = isOverCanyon || canyons[i].inCanyon;
-	}	
+	}
 }
 
-function drawCanyon(canyon) {
-	var width = canyon.width;
-	var x = canyon.x;
-	var floor = floorPos_y;
-	var depth = height - floor + 40;
-	var half = width / 2;
-	var soil = color(79, 63, 33);
-	var darkSoil = lerpColor(soil, color(0), 0.6);
-
-	push();
-	//right cliff
-	fill(soil);
-	beginShape();
-	vertex(x + half, floor);
-	vertex(x + half, height);
-	vertex(x + half + 20, height);
-	endShape(CLOSE);
-	//left cliff
-	beginShape();
-	vertex(x - half, floor);
-	vertex(x - half, height);
-	vertex(x - half - 20, height);
-	endShape(CLOSE);
-	// bottom
-	fill(soil);
-	rect(x - half, floor + depth - 10, width, height - depth);
-	// void
-	fill(darkSoil);
-	rect(x - half, floor, width, depth, 0, 0, 10, 10);
-	pop();
-}
-
-function checkCanyon(canyon) {
-	var leftWall = canyon.x_pos - canyon.width / 2;
-	var rightWall = canyon.x_pos + canyon.width / 2;
-
-	// Detect if character is within the canyon walls.
-	canyon.inCanyon =
-		(gameChar_world_x - 10 > leftWall) &&
-		(gameChar_world_x + 10 < rightWall);
-}
-
-// ---------------------------------------------
-// Collectable items render and check functions.
-// ---------------------------------------------
-
-function drawCollectables(){
+function drawCollectables() {
 	for (var i = 0; i < collectables.length; i++) {
 		if (!collectables[i].isCollected) {
 			collectables[i].update();
 			collectables[i].checkContact();
 			collectables[i].draw();
 		}
-	}	
-}
-
-function drawCollectable(collectable) {
-	var x = collectable.x;
-	var y = collectable.y;
-	var size = collectable.size;
-
-	push();
-	textAlign(CENTER);
-	textSize(size * 1.3);
-	var emoji = "\uD83C\uDF96"; // medal
-	text(emoji, x, y - 15);
-	pop();
-}
-
-
-// Function that checks if value is within interval bounds.
-function between(testValue, low, high, inclusive = true) {
-	return inclusive ?
-		testValue >= low && testValue <= high :
-		testValue > low && testValue < high;
-}
-
-function drawGameScore() {
-	fill(255);
-	textSize(20);
-	if (lives > 0 && !flagpole.isReached) {
-		elapsed = floor((new Date().getTime() - start) / 1000);
 	}
-	text(`Score: ${game_score}`, 20, 40);
-	text(`${elapsed}`, 20, 65);
-	// Draw remaining lives as guardsman icons.
-	var offset = width * 2 - 170;
-	for (var i = 0; i < lives; i++) {
-		renderGuardsmanIcon(offset + (i) * 55, 120);
-	}
-
 }
 
-function renderGuardsmanIcon(x, y) {
-	push();
-	// Scale it to 50% of game character size.
-	scale(0.5);
-	// Move origin
-	translate(x, y);
-	// head
-	fill(200, 150, 150);
-	stroke(0);
-	strokeWeight(2);
-	ellipse(0, -30, 29);
-	//eyes
-	fill(0);
-	noStroke();
-	ellipse(-7, -30, 5);
-	ellipse(7, -30, 5);
-	//lips
-	stroke(0);
-	strokeWeight(2);
-	line(-5, -22, 5, -22);
-	// hat
-	fill(0);
-	noStroke();
-	strokeWeight(1);
-	beginShape();
-	curveVertex(-15, -30);
-	curveVertex(-20, -30);
-	curveVertex(-20, -70);
-	curveVertex(20, -70);
-	curveVertex(20, -30);
-	curveVertex(15, -30);
-	endShape();
-	pop();
-}
-
-function renderFlagpole() {
-	push();
-	// flagpole
-	strokeWeight(5);
-	stroke(88, 53, 23);
-	strokeCap(SQUARE);
-	line(flagpole.x, floorPos_y, flagpole.x, floorPos_y - 150);
-	// flag
-	textSize(50);
-	var emoji = "\u{1F1EC}\u{1F1E7}"; // UK flag
-	if (flagpole.isReached) {
-		if (!levelUpSound.isPlaying() && !levelUpSoundPlayed) {
-			levelUpSound.play();
-			levelUpSoundPlayed = true;
+function drawEnemies() {
+	for (var i = 0; i < enemies.length; i++) {
+		enemies[i].draw();
+		enemies[i].checkContact(gameChar_world_x, gameChar_y);
+		if (enemies[i].inContact) {
+			if (game.lives > 0) {
+				game.lives--;
+				if (!lifeLostSound.isPlaying()) {
+					lifeLostSound.play();
+				}
+				startGame();
+				break;
+			}
 		}
-		text(emoji, flagpole.x, floorPos_y - 110);
-	} else {
-		text(emoji, flagpole.x, floorPos_y);
 	}
-	pop();
 }
 
-function checkFlagpole() {
-	var distance = abs(gameChar_world_x - flagpole.x);
-	flagpole.isReached = distance < 15;
+function drawFlagpole() {
+	// Check if the flagpole is reached.
+	if (!flagpole.isReached) {
+		flagpole.check();
+	}
+	// Draw the flagpole
+	flagpole.draw();
 }
+
 
 function checkPlayerDie() {
 	if (gameChar_y > height) {
-		lives--;
-		if (lives > 0) {
+		game.lives--;
+		if (game.lives > 0) {
 			startGame();
 		}
 	}
 }
 
+function Flagpole(x) {
+	this.x = x;
+	this.isReached = false;
 
+	this.check = function () {
+		var d = abs(gameChar_world_x - this.x);
+		this.isReached = d < 15;
+	}
 
+	this.draw = function () {
+		push();
+		// flagpole
+		strokeWeight(5);
+		stroke(88, 53, 23);
+		strokeCap(SQUARE);
+		line(this.x, game.floor, this.x, game.floor - 150);
+		// flag
+		textSize(50);
+		var emoji = "\u{1F1EC}\u{1F1E7}"; // UK flag
+		if (this.isReached) {
+			if (!levelUpSound.isPlaying() && !levelUpSoundPlayed) {
+				levelUpSound.play();
+				levelUpSoundPlayed = true;
+			}
+			text(emoji, this.x, game.floor - 110);
+		} else {
+			text(emoji, this.x, game.floor);
+		}
+		pop();
+	}
+}
 
 function Enemy(x, y, range, startingDirection = 1) {
 	this.x = x;
@@ -1345,6 +1097,7 @@ function Enemy(x, y, range, startingDirection = 1) {
 	this.range = range;
 	this.currentX = x;
 	this.inc = startingDirection;
+	this.inContact = false;
 
 	if (startingDirection == -1) {
 		this.currentX = x + range;
@@ -1360,7 +1113,7 @@ function Enemy(x, y, range, startingDirection = 1) {
 		}
 	}
 
-	this.render = function () {
+	this.draw = function () {
 		this.update();
 		push();
 		textAlign(CENTER);
@@ -1373,8 +1126,10 @@ function Enemy(x, y, range, startingDirection = 1) {
 	this.checkContact = function (gc_x, gc_y) {
 		var d = dist(gc_x, gc_y - 30, this.currentX, this.y - 30);
 		if (d < 48) {
+			this.inContact = true;
 			return true;
 		}
+		this.inContact = false;
 		return false;
 	}
 }
@@ -1477,14 +1232,196 @@ function Collectable(x, y, startingDirection = 1) {
 	}
 }
 
-function Character() {
-	this.pos = createVector(0, 0);
-}
+
 
 function Game() {
 	this.score = 0;
 	this.world = createVector(0, 0);
-	this.floor = 432;
+	this.floor = height * 3 / 4;
+	this.lives = 3;
+	this.currentLevel = 0;
+	this.levels = [];
+	this.state = gameState.RUNNING;
+
+	this.startNextLevel = function () {
+
+	}
+
+	this.restart = function () {
+		console.log("game.restart called");
+	}
+
+	this.onKeyPressed = function () {
+		console.log("game.onKeyPressed called");
+
+		// If statements to control the animation of the character 
+		// when keys are pressed.
+		const SPACE = 32;
+
+		switch (keyCode) {
+			case SPACE:
+				if (this.state == gameState.LEVEL_FINISHED) {
+					this.startNextLevel();
+					return;
+				}
+				if (this.state == gameState.GAME_OVER) {
+					this.lives = 3;
+					this.restart();
+				}
+				if (game.floor == character.pos.y || character.isOnPlatform) {
+					jumpSound.play();
+					character.jump();
+				}
+				break;
+			case LEFT_ARROW:
+				character.isMovingLeft = true;
+				character.isMovingRight = false;
+				break;
+			case RIGHT_ARROW:
+				character.isMovingRight = true;
+				character.isMovingLeft = false;
+				break;
+		}
+	}
+
+	this.onKeyReleased = function () {
+		console.log("game.onKeyReleased called");
+		// if statements to control the animation of the character 
+		// when keys are released.
+
+		if (keyCode == LEFT_ARROW) {
+			isMovingLeft = false;
+		} else if (keyCode == RIGHT_ARROW) {
+			isMovingRight = false;
+		}
+	}
+
+	this.drawUI = function () {
+		// Draw gridlines to help position the elements
+		if (DEVELOPER_MODE) {
+			drawGridlines();
+		}
+
+		// Draw current game score.
+		drawGameScore();
+
+		// Draw game over message if player run out of lives
+		if (game.lives < 1) {
+			drawGameOverMessage();
+			return;
+		}
+
+
+		// Draw level complete message if flagpole is reached
+		if (flagpole.isReached) {
+			drawLevelCompleteMessage();
+			return;
+		}
+
+
+		/************************
+		 Functions that render UI
+		 ************************/
+
+		function drawGameScore() {
+			fill(255);
+			textSize(20);
+			if (game.lives > 0 && !flagpole.isReached) {
+				elapsed = floor((new Date().getTime() - start) / 1000);
+			}
+			text(`Score: ${game_score}`, 20, 40);
+			text(`${elapsed}`, 20, 65);
+			// Draw remaining lives as guardsman icons.
+			var offset = width * 2 - 170;
+			for (var i = 0; i < game.lives; i++) {
+				drawCharacterIcon(offset + (i) * 55, 120);
+			}
+
+		}
+
+		function drawCharacterIcon(x, y) {
+			push();
+			// Scale it to 50% of game character size.
+			scale(0.5);
+			// Move origin
+			translate(x, y);
+			// head
+			fill(200, 150, 150);
+			stroke(0);
+			strokeWeight(2);
+			ellipse(0, -30, 29);
+			//eyes
+			fill(0);
+			noStroke();
+			ellipse(-7, -30, 5);
+			ellipse(7, -30, 5);
+			//lips
+			stroke(0);
+			strokeWeight(2);
+			line(-5, -22, 5, -22);
+			// hat
+			fill(0);
+			noStroke();
+			strokeWeight(1);
+			beginShape();
+			curveVertex(-15, -30);
+			curveVertex(-20, -30);
+			curveVertex(-20, -70);
+			curveVertex(20, -70);
+			curveVertex(20, -30);
+			curveVertex(15, -30);
+			endShape();
+			pop();
+		}
+
+		function drawGameOverMessage() {
+			if (!gameOverSound.isPlaying() && !gameOverSoundPlayed) {
+				gameOverSound.play();
+				gameOverSoundPlayed = true;
+			}
+
+			var message = "Game over.\r\nPress space to continue.";
+			push();
+			textAlign(CENTER);
+			textSize(40);
+			text(message, width / 2, height / 3 + 60);
+			pop();
+		}
+
+		function drawLevelCompleteMessage() {
+
+			var message = "Level complete.\r\nPress space to continue.";
+			push();
+			textAlign(CENTER);
+			textSize(40);
+			text(message, width / 2, height / 3 + 30);
+			pop();
+			drawGameChar();
+
+		}
+
+		function drawGridlines() {
+			push();
+			translate(scrollPos, 0);
+			for (var i = -500; i < 2000; i += 50) {
+				strokeWeight(0.5);
+				stroke("LightGray");
+				line(i, 0, i, height);
+				noStroke();
+				fill(255);
+				textSize(10);
+				text(i, i - 10, 10);
+			}
+			pop();
+		}
+	}
+}
+
+function Level() {
+	this.enemies = [];
+	this.platforms = [];
+	this.canvas = [];
+	this.collectables = [];
 }
 
 function Platform(x, length, level = 1, range = 0, startingDirection = 1) {
@@ -1563,4 +1500,767 @@ function Platform(x, length, level = 1, range = 0, startingDirection = 1) {
 		}
 		return false;
 	}
+}
+
+
+
+function playBackgroundMusic() {
+	if (backgroundMusicOn && backgroundMusic.isLoaded()) {
+		if (!backgroundMusic.isPlaying()) {
+			backgroundMusic.isLooping(true);
+			backgroundMusic.play();
+		}
+	}
+}
+
+function Character(x, y) {
+	// Character screen x and y position as a vector
+	this.pos = createVector(x, y);
+	this.worldX = x - scrollPos;
+
+	// Game control variables.
+	this.isMovingLeft = false;
+	this.isMovingRight = false;
+	this.isFalling = false;
+	this.isPlummeting = false;
+	this.isOverCanyon = false;
+	this.isInContactWithEnemy = false;
+	this.isOnPlatform = false;
+
+	this.jump = function () {
+		this.pos.y -= 120;
+	}
+
+	this.update = function () {
+
+
+		// Detect when character plummets into the canyon
+		this.isPlummeting = this.isOverCanyon && this.pos.y >= game.floor;
+
+		// Logic to make the game character move or the background scroll.
+		// No movement when plummeting.
+		if (!this.isPlummeting) {
+			// If the left arrow key is pressed.
+			if (this.isMovingLeft) {
+				// Move the game character if we did not step into 
+				// the first 20% of the canvas width.
+				if (this.pos.x > width * 0.2) {
+					this.pos.x -= 5;
+				} else {
+					// Scroll the background to the right when we reach 
+					// the first 20% of canvas width.
+					scrollPos += 5;
+				}
+			}
+			// If the right arrow key is pressed.
+			if (this.isMovingRight) {
+				// Move the game character if we did not step into 
+				// the first 20% of the canvas width.
+				if (this.pos.x < width * 0.8) {
+					this.pos.x += 5;
+				} else {
+					// Scroll the background to the left when we reach 
+					// the first 20% of canvas width.
+					scrollPos -= 5;
+				}
+			}
+		}
+
+		// Logic to make the game character rise and fall.
+
+		this.isFalling = this.pos.y < game.floor;
+		// Add gravity when character is above floor.
+		if (this.isFalling) {
+			//Check if the game character is on one of the platforms
+			for (var i = 0; i < platforms.length; i++) {
+				this.isOnPlatform = platforms[i].checkContact(this.worldX, this.pos.y);
+				if (this.isOnPlatform) {
+					break;
+				}
+			}
+			// Fall if not standing on platform
+			if (this.isOnPlatform) {
+				this.isFalling = false;
+			} else {
+				this.pos.y += 4;
+			}
+		}
+
+		// If character is plummeting it falls faster
+		if (this.isPlummeting) {
+			this.pos.y += 6;
+		}
+
+		// If the character falls off the screen it dies
+		if (this.pos.y > height) {
+			this.die();
+		}
+
+		// Update world position of character for collision detection
+		this.worldX = this.pos.x - scrollPos;
+
+	}
+
+	this.die = function () {
+		game.lives--;
+		if (game.lives > 0) {
+			startGame();
+		} else {
+			//game over
+		}
+	}
+
+	this.draw = function () {
+		// Render diffrerent game character sprites.
+		if (this.isPlummeting) {
+			plummetingUpsideDown();
+			if (!plummetSound.isPlaying()) {
+				plummetSound.play();
+			}
+		} else if (this.isMovingLeft && this.isFalling) {
+			jumpingLeft();
+		} else if (this.isMovingRight && this.isFalling) {
+			jumpingRight();
+		} else if (this.isMovingLeft) {
+			walkingLeft();
+		} else if (this.isMovingRight) {
+			walkingRight();
+		} else if (this.isFalling) {
+			jumpingFacingForwards();
+		} else {
+			standingFacingForwards();
+		}
+
+
+		function standingFacingForwards() {
+			// trunk
+			fill(207, 20, 43);
+			rect(gameChar_x - 10, gameChar_y - 35, 20, 30);
+			// hands
+			fill(0);
+			rect(gameChar_x - 15, gameChar_y - 20, 5, 14, 2);
+			rect(gameChar_x + 10, gameChar_y - 20, 5, 14, 2);
+			// head
+			fill(200, 150, 150);
+			stroke(0);
+			strokeWeight(2);
+			ellipse(gameChar_x, gameChar_y - 30, 29);
+			//eyes
+			fill(0);
+			noStroke();
+			ellipse(gameChar_x - 7, gameChar_y - 30, 5);
+			ellipse(gameChar_x + 7, gameChar_y - 30, 5);
+			//lips
+			stroke(0);
+			strokeWeight(2);
+			line(gameChar_x - 5, gameChar_y - 22, gameChar_x + 5, gameChar_y - 22);
+			// hat
+			fill(0);
+			noStroke();
+			strokeWeight(1);
+			beginShape();
+			curveVertex(gameChar_x - 15, gameChar_y - 30);
+			curveVertex(gameChar_x - 20, gameChar_y - 30);
+			curveVertex(gameChar_x - 20, gameChar_y - 70);
+			curveVertex(gameChar_x + 20, gameChar_y - 70);
+			curveVertex(gameChar_x + 20, gameChar_y - 30);
+			curveVertex(gameChar_x + 15, gameChar_y - 30);
+			endShape();
+			// boots
+			fill(0);
+			rect(gameChar_x - 10, gameChar_y - 5, 8, 8);
+			rect(gameChar_x + 2, gameChar_y - 5, 8, 8);
+		}
+
+		function plummetingUpsideDown() {
+			push();
+			// Move origin to the center of the game character
+			// and rotate by 180 degrees.
+			translate(gameChar_x, gameChar_y);
+			//var angle = keyCode == LEFT_ARROW ? -PI : PI;
+			//rotate(angle);
+			// trunk
+			fill(255, 0, 0);
+			rect(-10, -35, 20, 30);
+			// hands
+			fill(0);
+			push();
+			translate(-15, -20);
+			translate(6, 2);
+			rotate(PI / 2);
+			rect(0, 0, 5, 14, 2);
+			pop();
+			push();
+			translate(10, -20);
+			translate(-1, 7);
+			rotate(-PI / 2);
+			rect(0, 0, 5, 14, 2);
+			pop();
+			// head
+			fill(200, 150, 150);
+			stroke(0);
+			strokeWeight(2);
+			ellipse(0, -30, 29);
+			//eyes
+			fill(0);
+			noStroke();
+			ellipse(-7, -30, 5);
+			ellipse(7, -30, 5);
+			//lips
+			stroke(0);
+			strokeWeight(2);
+			line(-5, -22, 5, -22);
+			// hat
+			fill(0);
+			noStroke();
+			strokeWeight(1);
+			beginShape();
+			curveVertex(15, -30);
+			curveVertex(-20, -30);
+			curveVertex(-20, -65);
+			curveVertex(20, -65);
+			curveVertex(20, -30);
+			curveVertex(15, -30);
+			endShape();
+			// boots
+			fill(0);
+			rect(-10, -10, 8, 8);
+			rect(2, -8, 8, 8);
+			pop();
+		}
+
+		function jumpingFacingForwards() {
+			// trunk
+			fill(255, 0, 0);
+			rect(gameChar_x - 10, gameChar_y - 35, 20, 30);
+			// hands
+			fill(0);
+			push();
+			translate(gameChar_x - 15, gameChar_y - 20);
+			translate(6, 2);
+			rotate(PI / 2);
+			rect(0, 0, 5, 14, 2);
+			pop();
+			push();
+			translate(gameChar_x + 10, gameChar_y - 20);
+			translate(-1, 7);
+			rotate(-PI / 2);
+			rect(0, 0, 5, 14, 2);
+			pop();
+			// head
+			fill(200, 150, 150);
+			stroke(0);
+			strokeWeight(2);
+			ellipse(gameChar_x, gameChar_y - 30, 29);
+			//eyes
+			fill(0);
+			noStroke();
+			ellipse(gameChar_x - 7, gameChar_y - 30, 5);
+			ellipse(gameChar_x + 7, gameChar_y - 30, 5);
+			//lips
+			stroke(0);
+			strokeWeight(2);
+			line(gameChar_x - 5, gameChar_y - 22, gameChar_x + 5, gameChar_y - 22);
+			// hat
+			fill(0);
+			noStroke();
+			strokeWeight(1);
+			beginShape();
+			curveVertex(gameChar_x - 15, gameChar_y - 30);
+			curveVertex(gameChar_x - 20, gameChar_y - 30);
+			curveVertex(gameChar_x - 20, gameChar_y - 65);
+			curveVertex(gameChar_x + 20, gameChar_y - 65);
+			curveVertex(gameChar_x + 20, gameChar_y - 30);
+			curveVertex(gameChar_x + 15, gameChar_y - 30);
+			endShape();
+			// boots
+			fill(0);
+			rect(gameChar_x - 10, gameChar_y - 10, 8, 8);
+			rect(gameChar_x + 2, gameChar_y - 8, 8, 8);
+		}
+
+		function walkingLeft() {
+			fill(0);
+			// forward hand
+			push();
+			translate(gameChar_x - 15, gameChar_y - 20);
+			translate(9, 2);
+			rotate(PI / 6);
+			rect(0, 0, 5, 14, 2);
+			pop();
+			// trunk leaning forward
+			push();
+			translate(gameChar_x - 8, gameChar_y - 20);
+			translate(1, 4);
+			rotate(-PI / 8);
+			fill(255, 0, 0);
+			rect(0, 0, 15, 16);
+			pop();
+			// back hand
+			push();
+			translate(gameChar_x + 10, gameChar_y - 20);
+			translate(-5, 6);
+			rotate(-PI / 2);
+			rect(0, 0, 5, 14, 2);
+			pop();
+			// head
+			fill(200, 150, 150);
+			stroke(0);
+			strokeWeight(2);
+			ellipse(gameChar_x, gameChar_y - 30, 29);
+			// eyes
+			fill(0);
+			noStroke();
+			ellipse(gameChar_x - 7, gameChar_y - 30, 5);
+			// lips
+			stroke(0);
+			strokeWeight(2);
+			line(gameChar_x - 10, gameChar_y - 22, gameChar_x - 3, gameChar_y - 22);
+			// hat
+			fill(0);
+			noStroke();
+			strokeWeight(1);
+			beginShape();
+			curveVertex(gameChar_x - 15, gameChar_y - 31);
+			curveVertex(gameChar_x - 20, gameChar_y - 31);
+			curveVertex(gameChar_x - 12, gameChar_y - 70);
+			curveVertex(gameChar_x + 23, gameChar_y - 65);
+			curveVertex(gameChar_x + 20, gameChar_y - 26);
+			curveVertex(gameChar_x + 15, gameChar_y - 26);
+			endShape();
+			// back leg
+			push();
+			translate(gameChar_x + 6, gameChar_y - 5);
+			translate(1, 1);
+			rotate(-PI / 3);
+			rect(0, 0, 8, 8);
+			pop();
+			// forward leg
+			push();
+			translate(gameChar_x - 6, gameChar_y - 5);
+			translate(4, 1);
+			rect(0, 0, 8, 7);
+			pop();
+		}
+
+		function walkingRight() {
+			fill(0);
+			// forward hand
+			push();
+			translate(gameChar_x + 10, gameChar_y - 20);
+			translate(-6, 5);
+			rotate(-PI / 6);
+			rect(0, 0, 5, 14, 2);
+			pop();
+			// trunk leaning forward
+			push();
+			translate(gameChar_x - 8, gameChar_y - 20);
+			translate(3, -2);
+			rotate(PI / 8);
+			fill(255, 0, 0);
+			rect(0, 0, 15, 16);
+			pop();
+			// back hand
+			push();
+			translate(gameChar_x - 15, gameChar_y - 20);
+			translate(10, 1);
+			rotate(PI / 2);
+			rect(0, 0, 5, 14, 2);
+			pop();
+			// head
+			fill(200, 150, 150);
+			stroke(0);
+			strokeWeight(2);
+			ellipse(gameChar_x, gameChar_y - 30, 29);
+			// eyes
+			fill(0);
+			noStroke();
+			ellipse(gameChar_x + 7, gameChar_y - 30, 5);
+			// lips
+			stroke(0);
+			strokeWeight(2);
+			line(gameChar_x + 3, gameChar_y - 22, gameChar_x + 10, gameChar_y - 22);
+			// hat
+			fill(0);
+			noStroke();
+			strokeWeight(1);
+			beginShape();
+			curveVertex(gameChar_x - 15, gameChar_y - 26);
+			curveVertex(gameChar_x - 20, gameChar_y - 26);
+			curveVertex(gameChar_x - 21, gameChar_y - 65);
+			curveVertex(gameChar_x + 14, gameChar_y - 70);
+			curveVertex(gameChar_x + 20, gameChar_y - 31);
+			curveVertex(gameChar_x + 15, gameChar_y - 31);
+			endShape();
+			// back leg
+			push();
+			translate(gameChar_x - 6, gameChar_y - 5);
+			translate(-3, -6);
+			rotate(PI / 3);
+			rect(0, 0, 8, 8);
+			pop();
+			// forward leg
+			push();
+			translate(gameChar_x - 6, gameChar_y - 5);
+			translate(2, 1);
+			rect(0, 0, 8, 7);
+			pop();
+		}
+
+		function jumpingRight() {
+			fill(0);
+			// forward hand
+			push();
+			translate(gameChar_x + 10, gameChar_y - 20);
+			translate(-15, 0);
+			rotate(PI / 3);
+			rect(0, 0, 5, 14, 2);
+			pop();
+			// forward leg
+			push();
+			translate(gameChar_x + 6, gameChar_y - 5);
+			translate(-8, 1);
+			rotate(-PI / 8);
+			rect(0, 0, 8, 6);
+			pop();
+			// trunk leaning forward
+			push();
+			translate(gameChar_x - 8, gameChar_y - 20);
+			translate(3, -2);
+			rotate(PI / 8);
+			fill(255, 0, 0);
+			rect(0, 0, 15, 16);
+			pop();
+			// back hand
+			push();
+			translate(gameChar_x - 15, gameChar_y - 20);
+			translate(15, 5);
+			rotate(-PI / 3);
+			rect(0, 0, 5, 14, 2);
+			pop();
+			// head
+			fill(200, 150, 150);
+			stroke(0);
+			strokeWeight(2);
+			ellipse(gameChar_x, gameChar_y - 30, 29);
+			// eyes
+			fill(0);
+			noStroke();
+			ellipse(gameChar_x + 7, gameChar_y - 30, 5);
+			// lips
+			stroke(0);
+			strokeWeight(2);
+			line(gameChar_x + 3, gameChar_y - 22, gameChar_x + 10, gameChar_y - 22);
+			// hat
+			fill(0);
+			noStroke();
+			strokeWeight(1);
+			beginShape();
+			curveVertex(gameChar_x - 15, gameChar_y - 26);
+			curveVertex(gameChar_x - 20, gameChar_y - 26);
+			curveVertex(gameChar_x - 21, gameChar_y - 60);
+			curveVertex(gameChar_x + 14, gameChar_y - 67);
+			curveVertex(gameChar_x + 20, gameChar_y - 31);
+			curveVertex(gameChar_x + 15, gameChar_y - 31);
+			endShape();
+			// back leg
+			push();
+			translate(gameChar_x - 6, gameChar_y - 5);
+			translate(-4, -2.5);
+			rotate(0);
+			fill(0);
+			rect(0, 0, 8, 6);
+			pop();
+		}
+
+		function jumpingLeft() {
+			fill(0);
+			// back hand
+			push();
+			translate(gameChar_x + 10, gameChar_y - 20);
+			translate(-6, 5);
+			rotate(-PI / 3);
+			rect(0, 0, 5, 14, 2);
+			pop();
+			// forward leg
+			push();
+			translate(gameChar_x - 6, gameChar_y - 5);
+			translate(3, -2.5);
+			rotate(PI / 8);
+			rect(0, 0, 8, 6);
+			pop();
+			// trunk leaning forward
+			push();
+			translate(gameChar_x - 8, gameChar_y - 20);
+			translate(1, 4);
+			rotate(-PI / 8);
+			fill(255, 0, 0);
+			rect(0, 0, 15, 16);
+			pop();
+			// forward hand
+			push();
+			translate(gameChar_x + 10, gameChar_y - 20);
+			translate(-11, 2);
+			rotate(PI / 3);
+			rect(0, 0, 5, 14, 2);
+			pop();
+			// head
+			fill(200, 150, 150);
+			stroke(0);
+			strokeWeight(2);
+			ellipse(gameChar_x, gameChar_y - 30, 29);
+			// eyes
+			fill(0);
+			noStroke();
+			ellipse(gameChar_x - 7, gameChar_y - 30, 5);
+			// lips
+			stroke(0);
+			strokeWeight(2);
+			line(gameChar_x - 10, gameChar_y - 22, gameChar_x - 3, gameChar_y - 22);
+			// hat
+			fill(0);
+			noStroke();
+			strokeWeight(1);
+			beginShape();
+			curveVertex(gameChar_x - 15, gameChar_y - 31);
+			curveVertex(gameChar_x - 20, gameChar_y - 31);
+			curveVertex(gameChar_x - 12, gameChar_y - 67);
+			curveVertex(gameChar_x + 23, gameChar_y - 60);
+			curveVertex(gameChar_x + 20, gameChar_y - 26);
+			curveVertex(gameChar_x + 15, gameChar_y - 26);
+			endShape();
+			// back leg
+			fill(0);
+			push();
+			translate(gameChar_x + 6, gameChar_y - 5);
+			translate(-2, -2);
+			rotate(0);
+			rect(0, 0, 8, 6);
+			pop();
+		}
+
+		function standingFacingForwards() {
+			// trunk
+			fill(255, 0, 0);
+			rect(gameChar_x - 10, gameChar_y - 35, 20, 30);
+			// hands
+			fill(0);
+			rect(gameChar_x - 15, gameChar_y - 20, 5, 14, 2);
+			rect(gameChar_x + 10, gameChar_y - 20, 5, 14, 2);
+			// head
+			fill(200, 150, 150);
+			stroke(0);
+			strokeWeight(2);
+			ellipse(gameChar_x, gameChar_y - 30, 29);
+			// eyes
+			fill(0);
+			noStroke();
+			ellipse(gameChar_x - 7, gameChar_y - 30, 5);
+			ellipse(gameChar_x + 7, gameChar_y - 30, 5);
+			// lips
+			stroke(0);
+			strokeWeight(2);
+			line(gameChar_x - 5, gameChar_y - 22, gameChar_x + 5, gameChar_y - 22);
+			// hat
+			fill(0);
+			noStroke();
+			strokeWeight(1);
+			beginShape();
+			curveVertex(gameChar_x - 15, gameChar_y - 30);
+			curveVertex(gameChar_x - 20, gameChar_y - 30);
+			curveVertex(gameChar_x - 20, gameChar_y - 70);
+			curveVertex(gameChar_x + 20, gameChar_y - 70);
+			curveVertex(gameChar_x + 20, gameChar_y - 30);
+			curveVertex(gameChar_x + 15, gameChar_y - 30);
+			endShape();
+
+			// legs
+			fill(0);
+			rect(gameChar_x - 10, gameChar_y - 5, 8, 8);
+			rect(gameChar_x + 2, gameChar_y - 5, 8, 8);
+		}
+
+	}
+}
+
+function _draw() {
+
+	// Draw blue sky as a background
+	background("LightSkyBlue");
+
+	// Play the background music loop
+	playBackgroundMusic();
+
+	// Draw ground
+	drawGround();
+
+	// Draw cloud in the background with parallax
+	push();
+	translate(scrollPos / 2, 0);
+	drawClouds();
+	pop();
+
+	// Draw mountains with parallax
+	push();
+	translate(scrollPos / 1.5, 0);
+	drawMountains();
+	pop();
+
+	// Draw the trees and interactive objects as scrolling
+	push();
+	translate(scrollPos, 0);
+
+	drawTrees();
+
+	// Draw platforms.
+	drawPlatforms();
+
+	// Draw canyons. 
+	drawCanyons();
+
+	// Detect when character plummets in the canyon.
+	isPlummeting = isOverCanyon && gameChar_y >= floorPos_y;
+
+	// Check if any collectables are picked. 
+	drawCollectables();
+
+	drawFlagpole();
+
+	drawEnemies();
+
+	pop();
+
+	// Draw game UI such as scores and messages
+	game.drawUI();
+
+	// Draw game character.
+
+	character.draw();
+	character.update();
+
+
+	// Update real position of gameChar for collision detection.
+	gameChar_world_x = character.worldX;
+
+}
+
+function draw() {
+
+	// Draw blue sky as a background
+	background("LightSkyBlue");
+
+	// Play the background music loop
+	playBackgroundMusic();
+
+	// Draw ground
+	drawGround();
+
+	// Draw cloud in the background with parallax
+	push();
+	translate(scrollPos / 2, 0);
+	drawClouds();
+	pop();
+
+	// Draw mountains with parallax
+	push();
+	translate(scrollPos / 1.5, 0);
+	drawMountains();
+	pop();
+
+	// Draw the trees and interactive objects as scrolling
+	push();
+	translate(scrollPos, 0);
+
+	drawTrees();
+
+	// Draw platforms.
+	drawPlatforms();
+
+	// Draw canyons. 
+	drawCanyons();
+
+	// Detect when character plummets in the canyon.
+	isPlummeting = isOverCanyon && gameChar_y >= floorPos_y;
+
+	// Check if any collectables are picked. 
+	drawCollectables();
+
+	drawFlagpole();
+
+	drawEnemies();
+
+	pop();
+
+	// Draw game UI such as scores and messages
+	game.drawUI();
+
+	// Draw game character.
+	drawGameChar();
+
+	// Logic to make the game character move or the background scroll.
+	// No movement when plummeting.
+	if (!isPlummeting) {
+		// If the left arrow key is pressed.
+		if (isMovingLeft) {
+			// Move the game character if we did not step into 
+			// the first 20% of the canvas width.
+			if (gameChar_x > width * 0.2) {
+				gameChar_x -= 5;
+			} else {
+				// Scroll the background to the right when we reach 
+				// the first 20% of canvas width.
+				scrollPos += 5;
+			}
+		}
+		// If the right arrow key is pressed.
+		if (isMovingRight) {
+			// Move the game character if we did not step into 
+			// the first 20% of the canvas width.
+			if (gameChar_x < width * 0.8) {
+				gameChar_x += 5;
+			} else {
+				// Scroll the background to the left when we reach 
+				// the first 20% of canvas width.
+				scrollPos -= 5;
+			}
+		}
+	}
+
+	// Logic to make the game character rise and fall.
+
+	isFalling = gameChar_y < floorPos_y;
+	// Add gravity when character is above floor.
+	if (isFalling) {
+		//Check if the game character is on one of the platforms
+		for (var i = 0; i < platforms.length; i++) {
+			isOnPlatform = platforms[i].checkContact(gameChar_world_x, gameChar_y);
+			if (isOnPlatform) {
+				break;
+			}
+		}
+		// Fall if not standing on platform
+		if (isOnPlatform) {
+			isFalling = false;
+		} else {
+			gameChar_y += 4;
+		}
+	}
+	// Gravity is somewhat stronger in the canyon.
+	if (isPlummeting) {
+		gameChar_y += 6;
+		//gameChar_x = canyonCenter;
+		// if (gameChar_x < canyonCenter) {
+		// 	gameChar_x += (canyonCenter - gameChar_x) / 2;
+		// } else {
+		// 	gameChar_x -= (gameChar_x - canyonCenter - 30) / 2;
+		// }
+	}
+
+	// Check whether character fell of the screen and died.
+	checkPlayerDie();
+
+	// Update real position of gameChar for collision detection.
+	gameChar_world_x = gameChar_x - scrollPos;
+
+
 }
