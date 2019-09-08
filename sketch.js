@@ -1701,7 +1701,7 @@ var lifeLostSound;
 var levelUpSound;
 var gameOverSoundPlayed;
 var levelUpSoundPlayed;
-var backgroundMusicOn = false;
+var backgroundMusicOn = true;
 
 // Timing variables
 var elapsed;
