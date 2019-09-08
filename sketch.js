@@ -8,7 +8,6 @@
 // Peload assets before the game starts
 function preload() {
 	soundFormats("mp3");
-	backgroundMusic = loadSound("assets/background-loop.mp3");
 	lifeLostSound = loadSound("assets/life-lost.mp3");
 	startGameSound = loadSound("assets/start-game.mp3");
 	levelUpSound = loadSound("assets/level-up-long.mp3");
@@ -16,13 +15,15 @@ function preload() {
 	jumpSound = loadSound("assets/jump.mp3");
 	collectSound = loadSound("assets/collect-long.mp3");
 	plummetSound = loadSound("assets/plummet.mp3");
+
+	ukFlagImage = loadImage("assets/uk-flag.svg");
+	medalImage = loadImage("assets/medal.svg");
 }
 
 function setup() {
 	createCanvas(1920 / 2, 1080 / 2);
 
 	// Set volume of sound effects and background music
-	backgroundMusic.setVolume(0.05);
 	lifeLostSound.setVolume(0.05);
 	startGameSound.setVolume(0.1);
 	levelUpSound.setVolume(0.1);
@@ -41,9 +42,6 @@ function draw() {
 
 	// Draw blue sky as a background
 	background("LightSkyBlue");
-
-	// Play background music loop
-	playBackgroundMusic();
 
 	// Draw ground
 	drawGround();
@@ -103,6 +101,8 @@ function Game() {
 		this.state = gameState.READY;
 		this.score = 0;
 		this.lives = 3;
+		this.levelIndex = 0;
+		this.maxScore = 0;
 		elapsed = 0;
 
 
@@ -123,6 +123,9 @@ function Game() {
 
 		this.currentLevel = this.levels[0];
 
+		for (var i = 0; i < this.levels.length; i++) {
+			this.maxScore += this.levels[i].collectables.length;
+		}
 		// Initialise arrays of scenery objects
 		trees = [{
 				x: -520,
@@ -395,7 +398,7 @@ function Game() {
 
 		// Draw game finished  message
 		if (this.state == gameState.GAME_FINISHED) {
-			this.drawMessage(`Congratulations!\r\nYou collected ${this.score} medals in ${elapsed} seconds.`);
+			this.drawMessage(`You did it!\r\n${this.score}/${this.maxScore} medals in ${elapsed} seconds.`);
 			return;
 		}
 
@@ -711,7 +714,6 @@ function Level(title, flagpolePosition) {
 	}
 }
 
-
 function Character(x, y) {
 	// Character screen x and y position as a vector
 	this.pos = createVector(x, y);
@@ -810,7 +812,8 @@ function Character(x, y) {
 		}
 
 		// If the character falls off the screen it dies
-		if (this.pos.y > height) {
+		if (game.state == gameState.RUNNING &&
+			this.pos.y > height) {
 			this.die();
 		}
 
@@ -1430,8 +1433,13 @@ function Collectable(x, y, range = 0, startingDirection = 1) {
 		push();
 		textAlign(CENTER);
 		textSize(size * 1.3);
+		imageMode(CENTER);
+		image(medalImage, x, y - 25,
+			40, 40,
+			0, 0,
+			medalImage.width, medalImage.height);
 		var emoji = "\uD83C\uDF96"; // medal
-		text(emoji, x, y - 15);
+		//text(emoji, x, y - 15);
 		pop();
 	}
 
@@ -1549,9 +1557,18 @@ function Flagpole(x) {
 				levelUpSound.play();
 				levelUpSoundPlayed = true;
 			}
-			text(emoji, this.x, game.floor - 110);
+
+			image(ukFlagImage, this.x + 3, game.floor - 148,
+				ukFlagImage.width / 16, ukFlagImage.height / 16,
+				0, 0,
+				ukFlagImage.width, ukFlagImage.height);
+			//text(emoji, this.x, game.floor - 110);
 		} else {
-			text(emoji, this.x, game.floor);
+			image(ukFlagImage, this.x + 3, game.floor - ukFlagImage.height / 16,
+				ukFlagImage.width / 16, ukFlagImage.height / 16,
+				0, 0,
+				ukFlagImage.width, ukFlagImage.height);
+			//text(emoji, this.x, game.floor);
 		}
 		pop();
 	}
@@ -1661,15 +1678,6 @@ function drawTree(tree) {
 	pop();
 }
 
-// Plays the bacground music if sound file is loaded
-function playBackgroundMusic() {
-	if (backgroundMusicOn && backgroundMusic.isLoaded()) {
-		if (!backgroundMusic.isPlaying()) {
-			backgroundMusic.isLooping(true);
-			backgroundMusic.play();
-		}
-	}
-}
 // Enumeration of game states
 const gameState = {
 	READY: 0,
@@ -1693,18 +1701,20 @@ var character;
 // Game world variable
 var game;
 
+// Image variables
+var ukFlagImage;
+var medalImage;
+
 // Sound variables
 var jumpSound;
 var collectSound;
 var plummetSound;
-var backgroundMusic;
 var startGameSound;
 var gameOverSound;
 var lifeLostSound;
 var levelUpSound;
 var gameOverSoundPlayed;
 var levelUpSoundPlayed;
-var backgroundMusicOn = false;
 
 // Timing variables
 var elapsed;
