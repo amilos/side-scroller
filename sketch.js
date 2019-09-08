@@ -93,18 +93,17 @@ function Game() {
 	this.currentLevel; // Active level being played
 	this.levels = []; // Array of game levels
 	this.levelIndex = 0; // Index of active level array
-	this.state = gameState.RUNNING; // Game state
+	this.state = gameState.READY; // Game state
 
 
 	// Method that initializes game world
 	this.startGame = function () {
 		// Variable to control the background scrolling
 		this.scrollPos = 0;
-
-		start = new Date().getTime();
 		this.state = gameState.READY;
 		this.score = 0;
 		this.lives = 3;
+		elapsed = 0;
 
 		character = new Character(200, game.floor);
 
@@ -308,8 +307,6 @@ function Game() {
 		}
 	}
 
-
-
 	this.gameOver = function () {
 		this.state = gameState.GAME_OVER;
 		if (!gameOverSound.isPlaying() && !gameOverSoundPlayed) {
@@ -416,8 +413,10 @@ function Game() {
 	this.drawGameScore = function () {
 		fill(255);
 		textSize(20);
-		if (game.lives > 0 && !this.currentLevel.flagpole.isReached) {
-			elapsed = floor((new Date().getTime() - start) / 1000);
+		if (this.state == gameState.RUNNING) {
+			if (frameCount % 60 == 0) {
+				elapsed++;
+			}
 		}
 		text(`${this.currentLevel.title}, Score: ${this.score}`, 20, 40);
 		text(`${elapsed}`, 20, 65);
@@ -1705,4 +1704,4 @@ var levelUpSoundPlayed;
 var backgroundMusicOn = false;
 
 // Timing variables
-var start, elapsed;
+var elapsed;
