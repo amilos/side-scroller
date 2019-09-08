@@ -12,15 +12,16 @@ var scrollPos;
 var gameChar_world_x;
 
 // Game control variables.
-var isLeft;
-var isRight;
+var isMovingLeft;
+var isMovingRight;
 var isFalling;
 var isPlummeting;
-var isWithinCanyon;
+var isOverCanyon;
+var isInContactWithEnemy;
 var isOnPlatform;
 
 // Scenery variables.
-var trees_x;
+var trees;
 var clouds;
 var mountains;
 
@@ -43,6 +44,9 @@ var startGameSound;
 var gameOverSound;
 var lifeLostSound;
 var levelUpSound;
+
+var start, elapsed;
+
 
 var gameOverSoundPlayed;
 var levelUpSoundPlayed;
@@ -76,20 +80,273 @@ function preload() {
 
 }
 
-function sleep(ms) {
-	return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 function setup() {
-	createCanvas(1024, 576);
+	createCanvas(1920 / 2, 1080 / 2);
 	floorPos_y = height * 3 / 4;
 	lives = 3;
+	game_score = 0;
+
 	// Initialize the state of the game world.
 	startGame();
 }
 
+// Function that resets the state of the gamwe world.
+function startGame() {
+	// Initial position of game character.
+	gameChar_x = 200;
+	gameChar_y = floorPos_y;
+
+	if (lives == 3) {
+		start = new Date().getTime();
+		game_score = 0;
+	}
+
+	// Variable to control the background scrolling.
+	scrollPos = 0;
+
+	// Variable to store the real position of the gameChar in the game
+	// world. Needed for collision detection.
+	gameChar_world_x = gameChar_x - scrollPos;
+
+	// Boolean variables to control the movement of the game character.
+	isMovingLeft = false;
+	isMovingRight = false;
+	isFalling = false;
+	isPlummeting = false;
+	var isOnPlatform = false;
+
+	gameOverSoundPlayed = false;
+	levelUpSoundPlayed = false;
+
+	// Initialise arrays of scenery objects.
+
+	trees = [{
+			x: -520,
+			height: 120,
+			facing: 'L'
+		},
+		{
+			x: -150,
+			height: 150,
+			facing: 'L'
+		},
+		{
+			x: 100,
+			height: 150,
+			facing: 'R'
+		},
+		{
+			x: 200,
+			height: 120,
+			facing: 'R'
+		},
+		{
+			x: 500,
+			height: 150,
+			facing: 'L'
+		},
+		{
+			x: 1000,
+			height: 150,
+			facing: 'R'
+		},
+		{
+			x: 1100,
+			height: 150,
+			facing: 'L'
+		},
+		{
+			x: 1300,
+			height: 150,
+			facing: 'R'
+		},
+		{
+			x: 1500,
+			height: 150,
+			facing: 'L'
+		}
+	];
+
+	clouds = [{
+			x: -100,
+			y: 100,
+			width: 80
+		},
+		{
+			x: -600,
+			y: 120,
+			width: 120
+		},
+		{
+			x: -800,
+			y: 150,
+			width: 150
+		},
+		{
+			x: 100,
+			y: 100,
+			width: 80
+		},
+		{
+			x: 600,
+			y: 120,
+			width: 120
+		},
+		{
+			x: 800,
+			y: 150,
+			width: 150
+		},
+		{
+			x: 1100,
+			y: 100,
+			width: 80
+		},
+		{
+			x: 1600,
+			y: 120,
+			width: 120
+		},
+		{
+			x: 1800,
+			y: 150,
+			width: 150
+		}
+	];
+
+	mountains = [{
+			x: -20,
+			height: 180,
+			width: 360
+		},
+		{
+			x: -300,
+			height: 50,
+			width: 180
+		},
+		{
+			x: -500,
+			height: 120,
+			width: 360
+		},
+		{
+			x: -800,
+			height: 280,
+			width: 400
+		},
+		{
+			x: 20,
+			height: 180,
+			width: 360
+		},
+		{
+			x: 300,
+			height: 50,
+			width: 180
+		},
+		{
+			x: 500,
+			height: 120,
+			width: 360
+		},
+		{
+			x: 800,
+			height: 280,
+			width: 400
+		},
+		{
+			x: 1020,
+			height: 180,
+			width: 360
+		},
+		{
+			x: 1300,
+			height: 50,
+			width: 180
+		},
+		{
+			x: 1500,
+			height: 120,
+			width: 360
+		},
+		{
+			x: 1800,
+			height: 280,
+			width: 400
+		}
+	];
+
+	// {
+	// 	x: -350,
+	// 	width: 300,
+	// 	inCanyon: false
+	// },
+	// {
+	// 	x: 350,
+	// 	width: 120,
+	// 	inCanyon: false
+	// },
+	// {
+	// 	x: 750,
+	// 	width: 200,
+	// 	inCanyon: false
+	// },
+	// {
+	// 	x: 1550,
+	// 	width: 100,
+	// 	inCanyon: false
+	// },
+	// {
+	// 	x: 1800,
+	// 	width: 100,
+	// 	inCanyon: false
+	// }
+	canyons = [];
+	canyons.push(new Canyon(-350, 300));
+	canyons.push(new Canyon(350, 120));
+	canyons.push(new Canyon(750, 200));
+	canyons.push(new Canyon(1550, 100));
+	canyons.push(new Canyon(1800, 100));
+
+
+	collectables = [];
+	collectables.push(new Collectable(-100, 350));
+	collectables.push(new Collectable(600, 350));
+	collectables.push(new Collectable(600, 150));
+	collectables.push(new Collectable(820, 370));
+	collectables.push(new Collectable(1200, 400));
+	collectables.push(new Collectable(1200, 150));
+	collectables.push(new Collectable(1500, 370));
+	collectables.push(new Collectable(1650, 370));
+
+	platforms = [];
+	platforms.push(new Platform(450, 150, 1, 150 / 2));
+	platforms.push(new Platform(600, 200, 2, 200 / 2, -1));
+	platforms.push(new Platform(750, 100, 1));
+	platforms.push(new Platform(1050, 200, 1));
+	//platforms.push(new Platform(1100, 200, 1));
+	platforms.push(new Platform(1200, 100, 2));
+	platforms.push(new Platform(1350, 200, 1));
+
+	enemies = [];
+	this.enemies.push(new Enemy(450, floorPos_y - 5, 200));
+	this.enemies.push(new Enemy(500, floorPos_y - 180, 200));
+	this.enemies.push(new Enemy(950, floorPos_y - 5, 250));
+	this.enemies.push(new Enemy(1200, floorPos_y - 5, 250, -1));
+	this.enemies.push(new Enemy(1600, floorPos_y - 5, 150));
+
+	flagpole = {
+		x: 1920,
+		isReached: false
+	}
+
+	if (!plummetSound.isPlaying() && !lifeLostSound.isPlaying()) {
+		// startGameSound.play();
+	}
+}
+
 function draw() {
-	var canyonCenter;
+
 	// Blue sky as a background.
 	background("LightSkyBlue");
 
@@ -105,65 +362,51 @@ function draw() {
 	fill(0, 155, 0);
 	rect(0, floorPos_y, width, height / 4);
 
-	// implement cloud parallax
+	// push();
+	// translate(scrollPos, 0);
+	// for (var i = -500; i < 2000; i += 50) {
+	// 	strokeWeight(0.5);
+	// 	stroke("Gray");
+	// 	line(i, 0, i, height);
+	// 	noStroke();
+	// 	fill(255);
+	// 	textSize(10);
+	// 	text(`${i}`, i - 10, 10);
+	// }
+	// pop();
+
+
+	// Draw cloud in the background with parallax
 	push();
 	translate(scrollPos / 2, 0);
-	// Draw clouds.
 	drawClouds();
 	pop();
 
+	// Draw mountains with parallax
 	push();
 	translate(scrollPos / 1.5, 0);
-	// Draw mountains.
 	drawMountains();
 	pop();
 
-
-	// Scenery is rendered with horizontal scrolling.
+	// Draw the rest of the scrolling scenery and objects
 	push();
-
-	// Scroll the origin.
 	translate(scrollPos, 0);
 
-	// Draw the scenery.
-	//drawClouds();
-	//drawMountains();
 	drawTrees();
 
 	// Draw platforms.
-	for (var i = 0; i < platforms.length; i++) {
-		platforms[i].render();
-	}
+	drawPlatforms();
 
 	// Draw canyons. 
-	// TODO: Introduce function drawCanyons().
-	isWithinCanyon = false;
-	for (var i = 0; i < canyons.length; i++) {
-		checkCanyon(canyons[i]);
-		drawCanyon(canyons[i]);
-		isWithinCanyon = isWithinCanyon || canyons[i].inCanyon;
-		if (canyons[i].inCanyon) {
-			canyonCenter = scrollPos + canyons[i].x_pos;
-			strokeWeight(2);
-			stroke(0);
-			//line(canyonCenter, 0, canyonCenter, height);
-		}
-	}
-	// Detect when character plummets in the canyon.
-	isPlummeting = isWithinCanyon && gameChar_y >= floorPos_y;
+	drawCanyons();
 
+	// Detect when character plummets in the canyon.
+	isPlummeting = isOverCanyon && gameChar_y >= floorPos_y;
 
 
 
 	// Check if any collectables are picked. 
-	// TODO: Introduce function drawCollectables().
-	for (var i = 0; i < collectables.length; i++) {
-		if (!collectables[i].isCollected) {
-			checkCollectable(collectables[i]);
-			drawCollectable(collectables[i]);
-		}
-	}
-
+	drawCollectables();
 
 
 
@@ -226,7 +469,7 @@ function draw() {
 	// No movement when plummeting.
 	if (!isPlummeting) {
 		// If the left arrow key is pressed.
-		if (isLeft) {
+		if (isMovingLeft) {
 			// Move the game character if we did not step into 
 			// the first 20% of the canvas width.
 			if (gameChar_x > width * 0.2) {
@@ -238,7 +481,7 @@ function draw() {
 			}
 		}
 		// If the right arrow key is pressed.
-		if (isRight) {
+		if (isMovingRight) {
 			// Move the game character if we did not step into 
 			// the first 20% of the canvas width.
 			if (gameChar_x < width * 0.8) {
@@ -319,10 +562,10 @@ function keyPressed() {
 	}
 
 	if (keyCode == LEFT_ARROW) {
-		isLeft = true;
+		isMovingLeft = true;
 		// @ts-ignore
 	} else if (keyCode == RIGHT_ARROW) {
-		isRight = true;
+		isMovingRight = true;
 	} else if (key == " ") {
 		if (floorPos_y == gameChar_y || isOnPlatform) {
 			jumpSound.play();
@@ -336,10 +579,10 @@ function keyReleased() {
 	// when keys are released.
 	// @ts-ignore
 	if (keyCode == LEFT_ARROW) {
-		isLeft = false;
+		isMovingLeft = false;
 		// @ts-ignore
 	} else if (keyCode == RIGHT_ARROW) {
-		isRight = false;
+		isMovingRight = false;
 	}
 }
 
@@ -354,13 +597,13 @@ function drawGameChar() {
 		if (!plummetSound.isPlaying()) {
 			plummetSound.play();
 		}
-	} else if (isLeft && isFalling) {
+	} else if (isMovingLeft && isFalling) {
 		jumpingLeft();
-	} else if (isRight && isFalling) {
+	} else if (isMovingRight && isFalling) {
 		jumpingRight();
-	} else if (isLeft) {
+	} else if (isMovingLeft) {
 		walkingLeft();
-	} else if (isRight) {
+	} else if (isMovingRight) {
 		walkingRight();
 	} else if (isFalling) {
 		jumpingFacingForwards();
@@ -370,7 +613,6 @@ function drawGameChar() {
 	// textSize(10);
 	// fill(255);
 	// text(`${gameChar_y}`, gameChar_x - 9, gameChar_y - 48)
-
 
 }
 
@@ -834,8 +1076,8 @@ function drawClouds() {
 }
 
 function drawCloud(cloud) {
-	var x = cloud.x_pos;
-	var y = cloud.y_pos;
+	var x = cloud.x;
+	var y = cloud.y;
 	var width = cloud.width;
 	var half = width / 2;
 	var third = width / 3;
@@ -860,8 +1102,15 @@ function drawMountains() {
 	}
 }
 
+function drawPlatforms(){
+	for (var i = 0; i < platforms.length; i++) {
+		platforms[i].update();
+		platforms[i].draw();
+	}
+}	
+
 function drawMountain(mountain) {
-	var x = mountain.x_pos;
+	var x = mountain.x;
 	var floor = floorPos_y;
 	var mountainColor = color(151, 168, 183);
 	var darkSlopeColor = lerpColor(mountainColor, color(0), 0.1);
@@ -882,25 +1131,31 @@ function drawMountain(mountain) {
 
 function drawTrees() {
 	// Draw trees.
-	for (var i = 0; i < trees_x.length; i++) {
-		drawTree(trees_x[i]);
+	for (var i = 0; i < trees.length; i++) {
+		drawTree(trees[i]);
 	}
 }
 
-function drawTree(treePos_x) {
-	var x = treePos_x;
+function drawTree(tree) {
+	var x = tree.x;
 	var y = floorPos_y;
 
 	push();
+
+	translate(x, y);
+	if (tree.facing == 'R') {
+		applyMatrix(-1, 0, 0, 1, 0, 0);
+	}
+	scale(tree.height / 142.0);
 	// crown
 	fill(0, 140, 20);
-	ellipse(x - 7, y - 112, 60, 60);
-	ellipse(x - 17, y - 92, 70, 70);
-	ellipse(x + 23, y - 102, 40, 40);
+	ellipse(-7, -112, 60, 60);
+	ellipse(-17, -92, 70, 70);
+	ellipse(23, -102, 40, 40);
 	// trunk
 	fill(88, 53, 23);
-	triangle(x - 3, y, x + 9, y, x + 3, y - 92);
-	triangle(x + 3, y - 32, x + 3, y - 40, x - 17, y - 72);
+	triangle(-3, 0, 9, 0, 3, -92);
+	triangle(3, -32, 3, -40, -17, -72);
 	pop();
 }
 
@@ -908,9 +1163,18 @@ function drawTree(treePos_x) {
 // Canyon render and check functions
 // ---------------------------------
 
-function drawCanyon(t_canyon) {
-	var width = t_canyon.width;
-	var x = t_canyon.x_pos;
+function drawCanyons(){
+	isOverCanyon = false;
+	for (var i = 0; i < canyons.length; i++) {
+		canyons[i].check();
+		canyons[i].draw();
+		isOverCanyon = isOverCanyon || canyons[i].inCanyon;
+	}	
+}
+
+function drawCanyon(canyon) {
+	var width = canyon.width;
+	var x = canyon.x;
 	var floor = floorPos_y;
 	var depth = height - floor + 40;
 	var half = width / 2;
@@ -940,12 +1204,12 @@ function drawCanyon(t_canyon) {
 	pop();
 }
 
-function checkCanyon(t_canyon) {
-	var leftWall = t_canyon.x_pos - t_canyon.width / 2;
-	var rightWall = t_canyon.x_pos + t_canyon.width / 2;
+function checkCanyon(canyon) {
+	var leftWall = canyon.x_pos - canyon.width / 2;
+	var rightWall = canyon.x_pos + canyon.width / 2;
 
 	// Detect if character is within the canyon walls.
-	t_canyon.inCanyon =
+	canyon.inCanyon =
 		(gameChar_world_x - 10 > leftWall) &&
 		(gameChar_world_x + 10 < rightWall);
 }
@@ -954,10 +1218,20 @@ function checkCanyon(t_canyon) {
 // Collectable items render and check functions.
 // ---------------------------------------------
 
-function drawCollectable(t_collectable) {
-	var x = t_collectable.x_pos;
-	var y = t_collectable.y_pos;
-	var size = t_collectable.size;
+function drawCollectables(){
+	for (var i = 0; i < collectables.length; i++) {
+		if (!collectables[i].isCollected) {
+			collectables[i].update();
+			collectables[i].checkContact();
+			collectables[i].draw();
+		}
+	}	
+}
+
+function drawCollectable(collectable) {
+	var x = collectable.x;
+	var y = collectable.y;
+	var size = collectable.size;
 
 	push();
 	textAlign(CENTER);
@@ -967,18 +1241,6 @@ function drawCollectable(t_collectable) {
 	pop();
 }
 
-function checkCollectable(t_collectable) {
-	// Game characted collects the item if close enough.
-	const distance =
-		dist(
-			gameChar_world_x, gameChar_y - 30,
-			t_collectable.x_pos, t_collectable.y_pos - 15);
-	if (distance < 30) {
-		t_collectable.isCollected = true;
-		game_score++;
-		collectSound.play();
-	}
-}
 
 // Function that checks if value is within interval bounds.
 function between(testValue, low, high, inclusive = true) {
@@ -989,44 +1251,51 @@ function between(testValue, low, high, inclusive = true) {
 
 function drawGameScore() {
 	fill(255);
-	textSize(30);
+	textSize(20);
+	if (lives > 0 && !flagpole.isReached) {
+		elapsed = floor((new Date().getTime() - start) / 1000);
+	}
 	text(`Score: ${game_score}`, 20, 40);
+	text(`${elapsed}`, 20, 65);
 	// Draw remaining lives as guardsman icons.
 	var offset = width * 2 - 170;
 	for (var i = 0; i < lives; i++) {
 		renderGuardsmanIcon(offset + (i) * 55, 120);
 	}
+
 }
 
 function renderGuardsmanIcon(x, y) {
 	push();
 	// Scale it to 50% of game character size.
 	scale(0.5);
+	// Move origin
+	translate(x, y);
 	// head
 	fill(200, 150, 150);
 	stroke(0);
 	strokeWeight(2);
-	ellipse(x, y - 30, 29);
+	ellipse(0, -30, 29);
 	//eyes
 	fill(0);
 	noStroke();
-	ellipse(x - 7, y - 30, 5);
-	ellipse(x + 7, y - 30, 5);
+	ellipse(-7, -30, 5);
+	ellipse(7, -30, 5);
 	//lips
 	stroke(0);
 	strokeWeight(2);
-	line(x - 5, y - 22, x + 5, y - 22);
+	line(-5, -22, 5, -22);
 	// hat
 	fill(0);
 	noStroke();
 	strokeWeight(1);
 	beginShape();
-	curveVertex(x - 15, y - 30);
-	curveVertex(x - 20, y - 30);
-	curveVertex(x - 20, y - 70);
-	curveVertex(x + 20, y - 70);
-	curveVertex(x + 20, y - 30);
-	curveVertex(x + 15, y - 30);
+	curveVertex(-15, -30);
+	curveVertex(-20, -30);
+	curveVertex(-20, -70);
+	curveVertex(20, -70);
+	curveVertex(20, -30);
+	curveVertex(15, -30);
 	endShape();
 	pop();
 }
@@ -1037,7 +1306,7 @@ function renderFlagpole() {
 	strokeWeight(5);
 	stroke(88, 53, 23);
 	strokeCap(SQUARE);
-	line(flagpole.x_pos, floorPos_y, flagpole.x_pos, floorPos_y - 150);
+	line(flagpole.x, floorPos_y, flagpole.x, floorPos_y - 150);
 	// flag
 	textSize(50);
 	var emoji = "\u{1F1EC}\u{1F1E7}"; // UK flag
@@ -1046,15 +1315,15 @@ function renderFlagpole() {
 			levelUpSound.play();
 			levelUpSoundPlayed = true;
 		}
-		text(emoji, flagpole.x_pos, floorPos_y - 110);
+		text(emoji, flagpole.x, floorPos_y - 110);
 	} else {
-		text(emoji, flagpole.x_pos, floorPos_y);
+		text(emoji, flagpole.x, floorPos_y);
 	}
 	pop();
 }
 
 function checkFlagpole() {
-	var distance = abs(gameChar_world_x - flagpole.x_pos);
+	var distance = abs(gameChar_world_x - flagpole.x);
 	flagpole.isReached = distance < 15;
 }
 
@@ -1067,238 +1336,20 @@ function checkPlayerDie() {
 	}
 }
 
-// Function that resets the state of the gamwe world.
-function startGame() {
-	// Initial position of game character.
-	gameChar_x = width / 2;
-	gameChar_y = floorPos_y;
-
-	// Variable to control the background scrolling.
-	scrollPos = 0;
-
-	// Variable to store the real position of the gameChar in the game
-	// world. Needed for collision detection.
-	gameChar_world_x = gameChar_x - scrollPos;
-
-	// Boolean variables to control the movement of the game character.
-	isLeft = false;
-	isRight = false;
-	isFalling = false;
-	isPlummeting = false;
-	var isOnPlatform = false;
-
-	gameOverSoundPlayed = false;
-	levelUpSoundPlayed = false;
-
-	// Initialise arrays of scenery objects.
-	trees_x = [-150, -320, -400, -800, 100, 200, 500, 1000, 1100, 1300, 1500];
-
-	clouds = [{
-			x_pos: -100,
-			y_pos: 100,
-			width: 80
-		},
-		{
-			x_pos: -600,
-			y_pos: 120,
-			width: 120
-		},
-		{
-			x_pos: -800,
-			y_pos: 150,
-			width: 150
-		},
-		{
-			x_pos: 100,
-			y_pos: 100,
-			width: 80
-		},
-		{
-			x_pos: 600,
-			y_pos: 120,
-			width: 120
-		},
-		{
-			x_pos: 800,
-			y_pos: 150,
-			width: 150
-		},
-		{
-			x_pos: 1100,
-			y_pos: 100,
-			width: 80
-		},
-		{
-			x_pos: 1600,
-			y_pos: 120,
-			width: 120
-		},
-		{
-			x_pos: 1800,
-			y_pos: 150,
-			width: 150
-		}
-	];
-
-	mountains = [{
-			x_pos: -20,
-			height: 180,
-			width: 360
-		},
-		{
-			x_pos: -300,
-			height: 50,
-			width: 180
-		},
-		{
-			x_pos: -500,
-			height: 120,
-			width: 360
-		},
-		{
-			x_pos: -800,
-			height: 280,
-			width: 400
-		},
-		{
-			x_pos: 20,
-			height: 180,
-			width: 360
-		},
-		{
-			x_pos: 300,
-			height: 50,
-			width: 180
-		},
-		{
-			x_pos: 500,
-			height: 120,
-			width: 360
-		},
-		{
-			x_pos: 800,
-			height: 280,
-			width: 400
-		},
-		{
-			x_pos: 1020,
-			height: 180,
-			width: 360
-		},
-		{
-			x_pos: 1300,
-			height: 50,
-			width: 180
-		},
-		{
-			x_pos: 1500,
-			height: 120,
-			width: 360
-		},
-		{
-			x_pos: 1800,
-			height: 280,
-			width: 400
-		}
-	];
-
-	canyons = [{
-			x_pos: -230,
-			width: 120,
-			inCanyon: false
-		},
-		{
-			x_pos: -600,
-			width: 100,
-			inCanyon: false
-		},
-		{
-			x_pos: 300,
-			width: 120,
-			inCanyon: false
-		},
-		{
-			x_pos: 700,
-			width: 100,
-			inCanyon: false
-		},
-		{
-			x_pos: 1200,
-			width: 120,
-			inCanyon: false
-		},
-		{
-			x_pos: 1700,
-			width: 100,
-			inCanyon: false
-		}
-	];
-
-	collectables = [{
-			x_pos: -500,
-			y_pos: 400,
-			size: 30,
-			isCollected: false
-		},
-		{
-			x_pos: -100,
-			y_pos: 350,
-			size: 30,
-			isCollected: false
-		},
-		{
-			x_pos: 200,
-			y_pos: 400,
-			size: 30,
-			isCollected: false
-		},
-		{
-			x_pos: 800,
-			y_pos: 370,
-			size: 30,
-			isCollected: false
-		},
-		{
-			x_pos: 1200,
-			y_pos: 400,
-			size: 30,
-			isCollected: false
-		},
-		{
-			x_pos: 1500,
-			y_pos: 370,
-			size: 30,
-			isCollected: false
-		}
-	];
-
-	platforms = [];
-	platforms.push(createPlatforms(width / 2, 100, 1));
-	platforms.push(createPlatforms(width / 2 - 200, 200, 2));
-	platforms.push(createPlatforms(width / 2 + 100, 300, 3));
-
-	enemies = [];
-	this.enemies.push(new Enemy(width / 2 - 400, floorPos_y - 10, 100));
-
-	game_score = 0;
-
-	flagpole = {
-		x_pos: 1900,
-		isReached: false
-	}
-
-	if (!plummetSound.isPlaying() && !lifeLostSound.isPlaying()) {
-		startGameSound.play();
-	}
-}
 
 
-function Enemy(x, y, range) {
+
+function Enemy(x, y, range, startingDirection = 1) {
 	this.x = x;
 	this.y = y;
 	this.range = range;
 	this.currentX = x;
-	this.inc = 1;
+	this.inc = startingDirection;
+
+	if (startingDirection == -1) {
+		this.currentX = x + range;
+	}
+
 
 	this.update = function () {
 		this.currentX += this.inc;
@@ -1308,6 +1359,7 @@ function Enemy(x, y, range) {
 			this.inc = 1;
 		}
 	}
+
 	this.render = function () {
 		this.update();
 		push();
@@ -1315,14 +1367,9 @@ function Enemy(x, y, range) {
 		textSize(50);
 		var emoji = "👻"; // ghost
 		text(emoji, this.currentX, this.y - 5);
-		stroke(0);
-		// line(this.currentX, 0, this.currentX, floorPos_y);
-		// line(gameChar_world_x, 0, gameChar_world_x, floorPos_y);
-		// line(this.currentX - 25, this.y, this.currentX + 25, this.y);
-		// line(gameChar_world_x, 0, gameChar_world_x, floorPos_y);
-		// line(gameChar_world_x - 25, gameChar_y, gameChar_world_x + 25, gameChar_y);
 		pop();
 	}
+
 	this.checkContact = function (gc_x, gc_y) {
 		var d = dist(gc_x, gc_y - 30, this.currentX, this.y - 30);
 		if (d < 48) {
@@ -1332,65 +1379,188 @@ function Enemy(x, y, range) {
 	}
 }
 
-function createPlatforms(x, length, level = 1) {
-	var p = {
-		x: x,
-		y: floorPos_y - level * 85,
-		length: length,
-		level: level,
-		render: function () {
-			push();
-			strokeWeight(0.5);
-			stroke(0, 140, 250);
-			fill(0, 36, 125);
-			rectMode(CENTER);
-			rect(this.x, this.y, this.length, 20, 1);
 
-			switch (level) {
-				case 1:
-					noStroke();
-					fill(207, 20, 43);
-					rect(this.x, this.y, 8, 20);
-					fill(220);
-					rect(this.x - 8, this.y, 8, 20);
-					fill(220);
-					rect(this.x + 8, this.y, 8, 20);
-					break;
-				case 2:
-					noStroke();
-					fill(220);
-					rect(this.x, this.y, 8, 20);
-					rect(this.x - 16, this.y, 8, 20);
-					rect(this.x + 16, this.y, 8, 20);
-					fill(207, 20, 43);
-					rect(this.x - 8, this.y, 8, 20);
-					rect(this.x + 8, this.y, 8, 20);
-					break;
-				case 3:
-					noStroke();
-					fill(207, 20, 43);
-					rect(this.x, this.y, 8, 20);
-					rect(this.x - 16, this.y, 8, 20);
-					rect(this.x + 16, this.y, 8, 20);
-					fill(220);
-					rect(this.x - 8, this.y, 8, 20);
-					rect(this.x + 8, this.y, 8, 20);
-					rect(this.x - 24, this.y, 8, 20);
-					rect(this.x + 24, this.y, 8, 20);
-					break;
-				default:
+function Canyon(x, width) {
+	this.x = x;
+	this.width = width;
+	this.inCanyon = false;
+
+	this.draw = function () {
+		var floor = floorPos_y;
+		var depth = height - floor + 40;
+		var half = width / 2;
+		var soil = color(79, 63, 33);
+		var darkSoil = lerpColor(soil, color(0), 0.6);
+
+		push();
+		//right cliff
+		fill(soil);
+		beginShape();
+		vertex(this.x + half, floor);
+		vertex(this.x + half, height);
+		vertex(this.x + half + 20, height);
+		endShape(CLOSE);
+		//left cliff
+		beginShape();
+		vertex(this.x - half, floor);
+		vertex(this.x - half, height);
+		vertex(this.x - half - 20, height);
+		endShape(CLOSE);
+		// bottom
+		fill(soil);
+		rect(x - half, floor + depth - 10, this.width, height - depth);
+		// void
+		fill(darkSoil);
+		rect(x - half, floor, this.width, depth, 0, 0, 10, 10);
+		pop();
+	}
+
+	this.check = function () {
+		var leftWall = this.x - this.width / 2;
+		var rightWall = this.x + this.width / 2;
+
+		// Detect if character is within the canyon walls.
+		this.inCanyon =
+			(gameChar_world_x - 10 > leftWall) &&
+			(gameChar_world_x + 10 < rightWall);
+	}
+}
+
+function Collectable(x, y, startingDirection = 1) {
+	this.x = x;
+	this.y = y;
+	this.size = 30;
+	this.isCollected = false;
+	this.range = 100;
+	this.currentX = x;
+	this.inc = startingDirection;
+
+	if (startingDirection == -1) {
+		this.currentX = x + this.range;
+	}
+
+	this.update = function () {
+		if (this.range > 0) {
+			this.currentX += this.inc;
+			if (this.currentX >= this.x + this.range) {
+				this.inc = -1;
+			} else if (this.currentX < this.x) {
+				this.inc = 1;
 			}
-			pop();
-		},
-		checkContact: function (gc_x, gc_y) {
-			if (gc_x + 15 > this.x - this.length / 2 && gc_x < this.x + this.length / 2) {
-				var d = this.y - 10 - gc_y;
-				if (d >= 0 && d < 5) {
-					return true;
-				}
-			}
-			return false;
 		}
-	};
-	return p;
+	}
+
+	this.draw = function () {
+		var x = this.currentX;
+		var y = this.y;
+		var size = this.size;
+
+		push();
+		textAlign(CENTER);
+		textSize(size * 1.3);
+		var emoji = "\uD83C\uDF96"; // medal
+		text(emoji, x, y - 15);
+		pop();
+	}
+
+	this.checkContact = function () {
+		// Game characted collects the item if close enough.
+		const d =
+			dist(
+				gameChar_world_x, gameChar_y - 30,
+				this.currentX, this.y - 15);
+		if (d < 30) {
+			this.isCollected = true;
+			game_score++;
+			collectSound.play();
+		}
+	}
+}
+
+function Character() {
+	this.pos = createVector(0, 0);
+}
+
+function Game() {
+	this.score = 0;
+	this.world = createVector(0, 0);
+	this.floor = 432;
+}
+
+function Platform(x, length, level = 1, range = 0, startingDirection = 1) {
+	this.x = x;
+	this.y = floorPos_y - level * 80 - 10;
+	this.length = length;
+	this.range = range;
+	this.currentX = x;
+	this.inc = startingDirection;
+
+	if (startingDirection == -1) {
+		this.currentX = x + range;
+	}
+
+	this.update = function () {
+		if (this.range > 0) {
+			this.currentX += this.inc;
+			if (this.currentX >= this.x + this.range) {
+				this.inc = -1;
+			} else if (this.currentX < this.x) {
+				this.inc = 1;
+			}
+		}
+	}
+
+	this.draw = function () {
+		push();
+		strokeWeight(0.5);
+		stroke(0, 140, 250);
+		fill(0, 36, 125);
+		rectMode(CENTER);
+		rect(this.currentX, this.y, this.length, 20, 1);
+
+		switch (level) {
+			case 1:
+				noStroke();
+				fill(207, 20, 43);
+				rect(this.x, this.y, 8, 20);
+				fill(220);
+				rect(this.x - 8, this.y, 8, 20);
+				fill(220);
+				rect(this.x + 8, this.y, 8, 20);
+				break;
+			case 2:
+				noStroke();
+				fill(220);
+				rect(this.x, this.y, 8, 20);
+				rect(this.x - 16, this.y, 8, 20);
+				rect(this.x + 16, this.y, 8, 20);
+				fill(207, 20, 43);
+				rect(this.x - 8, this.y, 8, 20);
+				rect(this.x + 8, this.y, 8, 20);
+				break;
+			case 3:
+				noStroke();
+				fill(207, 20, 43);
+				rect(this.x, this.y, 8, 20);
+				rect(this.x - 16, this.y, 8, 20);
+				rect(this.x + 16, this.y, 8, 20);
+				fill(220);
+				rect(this.x - 8, this.y, 8, 20);
+				rect(this.x + 8, this.y, 8, 20);
+				rect(this.x - 24, this.y, 8, 20);
+				rect(this.x + 24, this.y, 8, 20);
+				break;
+			default:
+		}
+		pop();
+	}
+	this.checkContact = function (gc_x, gc_y) {
+		if (gc_x + 15 > this.currentX - this.length / 2 && gc_x < this.currentX + this.length / 2) {
+			var d = this.y - 10 - gc_y;
+			if (d >= 0 && d < 5) {
+				return true;
+			}
+		}
+		return false;
+	}
 }
