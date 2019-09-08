@@ -105,6 +105,7 @@ function Game() {
 		this.lives = 3;
 		elapsed = 0;
 
+
 		character = new Character(200, game.floor);
 
 		// Boolean variables to control the movement of the game character
@@ -113,7 +114,7 @@ function Game() {
 		levelUpSoundPlayed = false;
 
 		// Initialize levels 
-
+		this.levels = [];
 		this.levels.push(this.setupLevel1());
 		this.levels.push(this.setupLevel2());
 		this.levels.push(this.setupLevel3());
@@ -316,7 +317,6 @@ function Game() {
 	}
 
 	this.onKeyPressed = function () {
-		console.log("game.onKeyPressed called");
 
 		// If statements to control the animation of the character 
 		// when keys are pressed
@@ -343,19 +343,21 @@ function Game() {
 				}
 				break;
 			case LEFT_ARROW:
-				character.isMovingLeft = true;
-				break;
-			case RIGHT_ARROW:
-				character.isMovingRight = true;
-				break;
+				if (this.state == gameState.RUNNING) {
+					character.isMovingLeft = true;
+					return;
+				}
+				case RIGHT_ARROW:
+					if (this.state == gameState.RUNNING) {
+						character.isMovingRight = true;
+						return;
+					}
 		}
 	}
 
 	this.onKeyReleased = function () {
-		console.log("game.onKeyReleased called");
 		// if statements to control the animation of the character 
 		// when keys are released
-
 		if (keyCode == LEFT_ARROW) {
 			character.isMovingLeft = false;
 		} else if (keyCode == RIGHT_ARROW) {
@@ -402,8 +404,6 @@ function Game() {
 			this.drawMessage("Level complete.\r\nPress space to continue.");
 			return;
 		}
-
-
 	}
 
 	/************************
@@ -708,7 +708,6 @@ function Level(title, flagpolePosition) {
 		if (game.state == gameState.RUNNING) {
 			game.state = this.flagpole.isReached ? gameState.LEVEL_FINISHED : game.state;
 		}
-
 	}
 }
 
@@ -748,9 +747,9 @@ function Character(x, y) {
 
 		if (game.state == gameState.GAME_OVER ||
 			game.state == gameState.LEVEL_FINISHED) {
-			this.isPlummeting == false;
-			this.isMovingLeft == false;
-			this.isMovingRight == false;
+			this.isPlummeting = false;
+			this.isMovingLeft = false;
+			this.isMovingRight = false;
 			return;
 		}
 		// Detect when character plummets into the canyon
@@ -833,24 +832,28 @@ function Character(x, y) {
 	}
 
 	this.draw = function () {
-		// Render diffrerent game character sprites
-		if (this.isPlummeting) {
-			this.plummetingUpsideDown();
-			if (!plummetSound.isPlaying() && game.lives > 0) {
-				plummetSound.play();
+		if (game.state != gameState.GAME_OVER) {
+
+
+			// Render diffrerent game character sprites
+			if (this.isPlummeting) {
+				this.plummetingUpsideDown();
+				if (!plummetSound.isPlaying() && game.lives > 0) {
+					plummetSound.play();
+				}
+			} else if (this.isMovingLeft && this.isFalling) {
+				this.jumpingLeft();
+			} else if (this.isMovingRight && this.isFalling) {
+				this.jumpingRight();
+			} else if (this.isMovingLeft) {
+				this.walkingLeft();
+			} else if (this.isMovingRight) {
+				this.walkingRight();
+			} else if (this.isFalling) {
+				this.jumpingFacingForwards();
+			} else {
+				this.standingFacingForwards();
 			}
-		} else if (this.isMovingLeft && this.isFalling) {
-			this.jumpingLeft();
-		} else if (this.isMovingRight && this.isFalling) {
-			this.jumpingRight();
-		} else if (this.isMovingLeft) {
-			this.walkingLeft();
-		} else if (this.isMovingRight) {
-			this.walkingRight();
-		} else if (this.isFalling) {
-			this.jumpingFacingForwards();
-		} else {
-			this.standingFacingForwards();
 		}
 		this.update();
 	}
@@ -1701,7 +1704,7 @@ var lifeLostSound;
 var levelUpSound;
 var gameOverSoundPlayed;
 var levelUpSoundPlayed;
-var backgroundMusicOn = true;
+var backgroundMusicOn = false;
 
 // Timing variables
 var elapsed;
