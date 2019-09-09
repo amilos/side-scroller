@@ -153,11 +153,10 @@ function Game() {
 		this.maxScore = 0;
 		elapsed = 0;
 
-
+		// Create new character
 		character = new Character(200, game.floor);
 
 		// Boolean variables to control the movement of the game character
-
 		gameOverSoundPlayed = false;
 		levelUpSoundPlayed = false;
 
@@ -1197,7 +1196,7 @@ function Collectable(x, y, range = 0, startingDirection = 1) {
 	}
 
 	this.checkContact = function () {
-		// Game characted collects the item if close enough
+		// Game character collects the item if close enough
 		const d =
 			dist(
 				character.worldX, character.pos.y - 40,
@@ -1323,9 +1322,9 @@ function Flagpole(x) {
 	}
 }
 
-/*************************************
- Functions that render scenery objects
- *************************************/
+/**************************************
+ Functions that capture keyboard events
+ **************************************/
 
 function keyPressed() {
 	game.onKeyPressed();
