@@ -124,7 +124,7 @@ function Game() {
 
 		// Initialize levels 
 		this.levels = [];
-		this.levels.push(this.setupLevel3 ());
+		this.levels.push(this.setupLevel1());
 		this.levels.push(this.setupLevel2());
 		this.levels.push(this.setupLevel3());
 		this.levels.push(this.setupLevel4());
