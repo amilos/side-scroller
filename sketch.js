@@ -1,8 +1,8 @@
 // <reference path="p5.d.ts" />
-/// <reference path="node_modules/@types/p5/lib/addons/p5.sound.d.ts" />
-/// <reference path="node_modules/@types/p5/global.d.ts" />
+//// <reference path="node_modules/@types/p5/lib/addons/p5.sound.d.ts" />
+//// <reference path="node_modules/@types/p5/global.d.ts" />
 
-//@ts-check
+//ts-check
 
 
 // Peload assets before the game starts
@@ -24,10 +24,13 @@ function preload() {
 	winning = loadAnimation("assets/win2.png", "assets/win3.png");
 	dying = loadAnimation("assets/die1.png", "assets/die2.png", "assets/die3.png", "assets/die4.png", "assets/die5.png");
 	idle = loadAnimation("assets/idle.png");
+	coin = loadAnimation("assets/coin1.png", "assets/coin2.png", "assets/coin3.png", "assets/coin4.png");
+	hovering = loadAnimation("assets/ghost1.png", "assets/ghost2.png", "assets/ghost3.png", "assets/ghost4.png");
 }
 
 function setup() {
 	createCanvas(1920 / 2, 1080 / 2);
+	frameRate(45);
 
 	// Set volume of sound effects and background music
 	lifeLostSound.setVolume(0.05);
@@ -121,7 +124,7 @@ function Game() {
 
 		// Initialize levels 
 		this.levels = [];
-		this.levels.push(this.setupLevel1());
+		this.levels.push(this.setupLevel3 ());
 		this.levels.push(this.setupLevel2());
 		this.levels.push(this.setupLevel3());
 		this.levels.push(this.setupLevel4());
@@ -352,15 +355,15 @@ function Game() {
 				}
 				break;
 			case LEFT_ARROW:
-				if (this.state == gameState.RUNNING) {
+				if (this.state == gameState.RUNNING && !character.isDying) {
 					character.isMovingLeft = true;
 					return;
 				}
-				case RIGHT_ARROW:
-					if (this.state == gameState.RUNNING) {
+			case RIGHT_ARROW:
+				if (this.state == gameState.RUNNING && !character.isDying) {
 						character.isMovingRight = true;
 						return;
-					}
+				}
 		}
 	}
 
@@ -483,14 +486,15 @@ function Game() {
 	this.drawGridlines = function () {
 		push();
 		translate(this.scrollPos, 0);
+		noStroke();
+		fill(255);
+		textSize(10);
+		text(frameRate(), width/2, 50);
 		for (var i = -500; i < 2000; i += 50) {
 			strokeWeight(0.5);
 			stroke("LightGray");
 			line(i, 0, i, height);
-			noStroke();
-			fill(255);
-			textSize(10);
-			text(i, i - 10, 10);
+
 		}
 		pop();
 	}
@@ -571,7 +575,7 @@ function Game() {
 		l.platforms.push(new Platform(1350, 200, 1));
 
 		l.enemies.push(new Enemy(450, game.floor - 5, 200));
-		l.enemies.push(new Enemy(500, game.floor - 180, 200));
+		l.enemies.push(new Enemy(500, game.floor - 184, 200));
 		l.enemies.push(new Enemy(950, game.floor - 5, 250));
 		l.enemies.push(new Enemy(1200, game.floor - 5, 250, -1));
 		l.enemies.push(new Enemy(1600, game.floor - 5, 150));
@@ -700,7 +704,7 @@ function Level(title, flagpolePosition) {
 			this.enemies[i].draw();
 			this.enemies[i].checkContact(character.worldX, character.pos.y);
 			if (this.enemies[i].inContact) {
-				if (game.state == gameState.RUNNING) {
+				if (game.state == gameState.RUNNING && !character.isDying) {
 					character.die();
 				}
 				break;
@@ -737,6 +741,7 @@ function Character(x, y) {
 	this.isOnPlatform = false;
 	this.isCelebrating = false;
 	this.isDying = false;
+	this.dyingFrame = 0;
 
 	this.jump = function () {
 		this.pos.y -= 120;
@@ -754,6 +759,7 @@ function Character(x, y) {
 		this.isInContactWithEnemy = false;
 		this.isOnPlatform = false;
 		this.isCelebrating = false;
+		this.isDying = false;
 	}
 
 	this.update = function () {
@@ -772,7 +778,7 @@ function Character(x, y) {
 
 		// Logic to make the game character move or the background scroll
 		// No movement when plummeting
-		if (!this.isPlummeting) {
+		if (!this.isPlummeting && !this.isDying) {
 			// If the left arrow key is pressed
 			if (this.isMovingLeft) {
 				// Move the game character if we did not step into 
@@ -823,6 +829,13 @@ function Character(x, y) {
 		if (this.isPlummeting) {
 			this.pos.y += 6;
 		}
+		if (character.isDying) {
+			var d = frameCount - character.dyingFrame;
+			if (d > 40) {
+				dying.changeFrame(0);
+				game.startLevel();
+			}
+		}
 
 		// If the character falls off the screen it dies
 		if (game.state == gameState.RUNNING &&
@@ -836,22 +849,25 @@ function Character(x, y) {
 	}
 
 	this.die = function () {
-		game.lives--;
+		if (character.isDying) {
+			if (game.lives > 0) {
+				game.startLevel();
+			} else {
+				game.gameOver();
+			}
+		}
 		if (!lifeLostSound.isPlaying()) {
 			lifeLostSound.play();
-		}
-		if (game.lives > 0) {
-			game.startLevel();
-		} else {
-			game.gameOver();
-		}
+		}		
+		character.isDying = true;
+		character.dyingFrame = frameCount;
+		game.lives--;
+
 	}
 
 	this.draw = function () {
 		if (game.state != gameState.GAME_OVER) {
-
-
-			// Render diffrerent game character sprites
+			// Render different game character sprites
 			if (this.isPlummeting) {
 				this.plummeting();
 				if (!plummetSound.isPlaying() && game.lives > 0) {
@@ -859,6 +875,8 @@ function Character(x, y) {
 				}
 			} else if (this.isCelebrating) {
 				this.saluting();
+			} else if (this.isDying) {
+				this.loosingLife();				
 			} else if (this.isMovingLeft && this.isFalling) {
 				this.jumpingLeft();
 			} else if (this.isMovingRight && this.isFalling) {
@@ -1395,6 +1413,13 @@ function Enemy(x, y, range, startingDirection = 1) {
 	this.draw = function () {
 		this.update();
 		push();
+		translate(this.currentX,this.y - 30);
+		scale(1 / 3);
+		hovering.frameDelay = 10;	
+		animation(hovering, 0, 0);
+		pop();
+		return;
+		push();
 		textAlign(CENTER);
 		textSize(50);
 		var emoji = "👻"; // ghost
@@ -1491,15 +1516,10 @@ function Collectable(x, y, range = 0, startingDirection = 1) {
 		var size = this.size;
 
 		push();
-		textAlign(CENTER);
-		textSize(size * 1.3);
-		imageMode(CENTER);
-		image(medalImage, x, y - 25,
-			40, 40,
-			0, 0,
-			medalImage.width, medalImage.height);
-		var emoji = "\uD83C\uDF96"; // medal
-		//text(emoji, x, y - 15);
+		translate(x, y - 24);
+		scale(1 / 4);
+		coin.frameDelay = 45;	
+		animation(coin, 0, 0);
 		pop();
 	}
 
@@ -1785,3 +1805,5 @@ var idle;
 var dying;
 var jumping;
 var winning;
+var coin;
+var hovering;
