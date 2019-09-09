@@ -18,6 +18,12 @@ function preload() {
 
 	ukFlagImage = loadImage("assets/uk-flag.svg");
 	medalImage = loadImage("assets/medal.svg");
+
+	walking = loadAnimation("assets/1.png", "assets/2.png", "assets/3.png", "assets/4.png", "assets/5.png", "assets/6.png");
+	jumping = loadAnimation("assets/jump1.png", "assets/jump2.png", "assets/frontal-jump.png");
+	winning = loadAnimation("assets/win2.png", "assets/win3.png");
+	dying = loadAnimation("assets/die1.png", "assets/die2.png", "assets/die3.png", "assets/die4.png", "assets/die5.png");
+	idle = loadAnimation("assets/idle.png");
 }
 
 function setup() {
@@ -694,7 +700,9 @@ function Level(title, flagpolePosition) {
 			this.enemies[i].draw();
 			this.enemies[i].checkContact(character.worldX, character.pos.y);
 			if (this.enemies[i].inContact) {
-				character.die();
+				if (game.state == gameState.RUNNING) {
+					character.die();
+				}
 				break;
 			}
 		}
@@ -727,6 +735,8 @@ function Character(x, y) {
 	this.isOverCanyon = false;
 	this.isInContactWithEnemy = false;
 	this.isOnPlatform = false;
+	this.isCelebrating = false;
+	this.isDying = false;
 
 	this.jump = function () {
 		this.pos.y -= 120;
@@ -743,6 +753,7 @@ function Character(x, y) {
 		this.isOverCanyon = false;
 		this.isInContactWithEnemy = false;
 		this.isOnPlatform = false;
+		this.isCelebrating = false;
 	}
 
 	this.update = function () {
@@ -752,10 +763,12 @@ function Character(x, y) {
 			this.isPlummeting = false;
 			this.isMovingLeft = false;
 			this.isMovingRight = false;
+			this.isCelebrating = game.state == gameState.LEVEL_FINISHED;
 			return;
 		}
 		// Detect when character plummets into the canyon
 		this.isPlummeting = this.isOverCanyon && this.pos.y >= game.floor;
+
 
 		// Logic to make the game character move or the background scroll
 		// No movement when plummeting
@@ -840,10 +853,12 @@ function Character(x, y) {
 
 			// Render diffrerent game character sprites
 			if (this.isPlummeting) {
-				this.plummetingUpsideDown();
+				this.plummeting();
 				if (!plummetSound.isPlaying() && game.lives > 0) {
 					plummetSound.play();
 				}
+			} else if (this.isCelebrating) {
+				this.saluting();
 			} else if (this.isMovingLeft && this.isFalling) {
 				this.jumpingLeft();
 			} else if (this.isMovingRight && this.isFalling) {
@@ -854,6 +869,7 @@ function Character(x, y) {
 				this.walkingRight();
 			} else if (this.isFalling) {
 				this.jumpingFacingForwards();
+
 			} else {
 				this.standingFacingForwards();
 			}
@@ -862,6 +878,16 @@ function Character(x, y) {
 	}
 
 	this.standingFacingForwards = function () {
+
+		push();
+		// stroke(0);
+		// strokeWeight(1);
+		// line(this.pos.x, 0, this.pos.x, height);		
+		translate(this.pos.x + 5, this.pos.y - 50);
+		scale(1 / 2);
+		animation(idle, 0, 0);
+		pop();
+		return;
 		// trunk
 		fill(207, 20, 43);
 		rect(this.pos.x - 10, this.pos.y - 35, 20, 30);
@@ -901,7 +927,38 @@ function Character(x, y) {
 		rect(this.pos.x + 2, this.pos.y - 5, 8, 8);
 	}
 
-	this.plummetingUpsideDown = function () {
+	this.saluting = function () {
+		push();
+		translate(this.pos.x + 5, this.pos.y - 50);
+		scale(1 / 2);
+		winning.frameDelay = 60;
+		animation(winning, 0, 0);
+		pop();
+	}
+
+	this.loosingLife = function () {
+		push();
+		translate(this.pos.x + 5, this.pos.y - 50);
+		scale(1 / 2);
+		dying.looping = false;
+		dying.frameDelay = 10;
+		animation(dying, 0, 0);
+		pop();
+	}
+
+	this.plummeting = function () {
+		push();
+		translate(this.pos.x + 5, this.pos.y - 50);
+		scale(1 / 2);
+		var d = this.pos.y - game.floor;
+		if (d < 7) {
+			dying.changeFrame(0);
+		}
+		dying.looping = false;
+		dying.frameDelay = 10;
+		animation(dying, 0, 0);
+		pop();
+		return;
 		push();
 		// Move origin to the center of the game character
 		// and rotate by 180 degrees
@@ -958,6 +1015,14 @@ function Character(x, y) {
 	}
 
 	this.jumpingFacingForwards = function () {
+		push();
+		translate(this.pos.x + 5, this.pos.y - 50);
+		scale(1 / 2);
+		jumping.playing = false;
+		jumping.changeFrame(2);
+		animation(jumping, 0, 0);
+		pop();
+		return;
 		// trunk
 		fill(255, 0, 0);
 		rect(this.pos.x - 10, this.pos.y - 35, 20, 30);
@@ -1008,6 +1073,14 @@ function Character(x, y) {
 	}
 
 	this.walkingLeft = function () {
+		push();
+		translate(this.pos.x + 5, this.pos.y - 50);
+		scale(1 / 2);
+		applyMatrix(-1, 0, 0, 1, 0, 0);
+		animation(walking, 0, 0);
+		pop();
+		return;
+
 		fill(0);
 		// forward hand
 		push();
@@ -1072,6 +1145,13 @@ function Character(x, y) {
 	}
 
 	this.walkingRight = function () {
+		push();
+		translate(this.pos.x + 5, this.pos.y - 50);
+		scale(1 / 2);
+		animation(walking, 0, 0);
+		pop();
+		return;
+
 		fill(0);
 		// forward hand
 		push();
@@ -1136,6 +1216,15 @@ function Character(x, y) {
 	}
 
 	this.jumpingRight = function () {
+		push();
+		translate(this.pos.x + 5, this.pos.y - 50);
+		scale(1 / 2);
+		jumping.playing = false;
+		jumping.changeFrame(0);
+		animation(jumping, 0, 0);
+		pop();
+		return;
+
 		fill(0);
 		// forward hand
 		push();
@@ -1202,6 +1291,16 @@ function Character(x, y) {
 	}
 
 	this.jumpingLeft = function () {
+		push();
+		translate(this.pos.x + 5, this.pos.y - 50);
+		scale(1 / 2);
+		applyMatrix(-1, 0, 0, 1, 0, 0);
+		jumping.playing = false;
+		jumping.changeFrame(0);
+		animation(jumping, 0, 0);
+		pop();
+		return;
+
 		fill(0);
 		// back hand
 		push();
@@ -1267,46 +1366,7 @@ function Character(x, y) {
 		pop();
 	}
 
-	this.standingFacingForwards = function () {
-		// trunk
-		fill(255, 0, 0);
-		rect(this.pos.x - 10, this.pos.y - 35, 20, 30);
-		// hands
-		fill(0);
-		rect(this.pos.x - 15, this.pos.y - 20, 5, 14, 2);
-		rect(this.pos.x + 10, this.pos.y - 20, 5, 14, 2);
-		// head
-		fill(200, 150, 150);
-		stroke(0);
-		strokeWeight(2);
-		ellipse(this.pos.x, this.pos.y - 30, 29);
-		// eyes
-		fill(0);
-		noStroke();
-		ellipse(this.pos.x - 7, this.pos.y - 30, 5);
-		ellipse(this.pos.x + 7, this.pos.y - 30, 5);
-		// lips
-		stroke(0);
-		strokeWeight(2);
-		line(this.pos.x - 5, this.pos.y - 22, this.pos.x + 5, this.pos.y - 22);
-		// hat
-		fill(0);
-		noStroke();
-		strokeWeight(1);
-		beginShape();
-		curveVertex(this.pos.x - 15, this.pos.y - 30);
-		curveVertex(this.pos.x - 20, this.pos.y - 30);
-		curveVertex(this.pos.x - 20, this.pos.y - 70);
-		curveVertex(this.pos.x + 20, this.pos.y - 70);
-		curveVertex(this.pos.x + 20, this.pos.y - 30);
-		curveVertex(this.pos.x + 15, this.pos.y - 30);
-		endShape();
 
-		// legs
-		fill(0);
-		rect(this.pos.x - 10, this.pos.y - 5, 8, 8);
-		rect(this.pos.x + 2, this.pos.y - 5, 8, 8);
-	}
 
 }
 
@@ -1447,7 +1507,7 @@ function Collectable(x, y, range = 0, startingDirection = 1) {
 		// Game characted collects the item if close enough
 		const d =
 			dist(
-				character.worldX, character.pos.y - 30,
+				character.worldX, character.pos.y - 40,
 				this.currentX, this.y - 15);
 		if (d < 30) {
 			this.isCollected = true;
@@ -1718,3 +1778,10 @@ var levelUpSoundPlayed;
 
 // Timing variables
 var elapsed;
+
+// Character animation variables
+var walking;
+var idle;
+var dying;
+var jumping;
+var winning;
