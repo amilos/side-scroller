@@ -1,13 +1,40 @@
-// <reference path="p5.d.ts" />
-//// <reference path="node_modules/@types/p5/lib/addons/p5.sound.d.ts" />
-//// <reference path="node_modules/@types/p5/global.d.ts" />
+/********************************************************************
+	EXTENSION 1 - ENEMIES 
+	---------------------
+	
+	I decided to add support for enemies using constructor functions. 
+	Nothing was too difficult with enemies as I used P5.play library
+	to animate their hovering. Tricky part was coordinating sequence
+	when character dies. I've learnt how to control animations and
+	how to debug chrome from VS Code editor.
+	
+	EXTENSION 2 - SOUNDS
+	--------------------
+	Sounds made the gaming experience much better. The tricky part was
+	matching the sounds with game events and making sure that sounds
+	do not not play repeatedly and do not overlap each other.
+	Aside from elementary usage of p5.sound library I've also learnt
+	basic sound editing as some sounds needed trimming.
 
-//ts-check
+	CREDITS
+	-------
+	Sounds, animations and images: Marko Milosevic bboykoma@yahoo.com
+	Level design: Andrea Milosevic andrea.milosevic@live.com
+	p5.play library by Paolo Pedercini, molleindustria, 2015
+	http://molleindustria.org/
+
+	OTHER
+	-----
+	Levels were designed to be progressively harder for the player.
+	Game object holds the game world.
+
+********************************************************************/
 
 
-// Peload assets before the game starts
+// Preload assets before the game starts
 function preload() {
 	soundFormats("mp3");
+	// Loading sound resources
 	lifeLostSound = loadSound("assets/life-lost.mp3");
 	startGameSound = loadSound("assets/start-game.mp3");
 	levelUpSound = loadSound("assets/level-up-long.mp3");
@@ -16,16 +43,28 @@ function preload() {
 	collectSound = loadSound("assets/collect-long.mp3");
 	plummetSound = loadSound("assets/plummet.mp3");
 
+	// Loading image resources
 	ukFlagImage = loadImage("assets/uk-flag.svg");
 	medalImage = loadImage("assets/medal.svg");
 
-	walking = loadAnimation("assets/1.png", "assets/2.png", "assets/3.png", "assets/4.png", "assets/5.png", "assets/6.png");
-	jumping = loadAnimation("assets/jump1.png", "assets/jump2.png", "assets/frontal-jump.png");
-	winning = loadAnimation("assets/win2.png", "assets/win3.png");
-	dying = loadAnimation("assets/die1.png", "assets/die2.png", "assets/die3.png", "assets/die4.png", "assets/die5.png");
+	// Loading animation resources
 	idle = loadAnimation("assets/idle.png");
-	coin = loadAnimation("assets/coin1.png", "assets/coin2.png", "assets/coin3.png", "assets/coin4.png");
-	hovering = loadAnimation("assets/ghost1.png", "assets/ghost2.png", "assets/ghost3.png", "assets/ghost4.png");
+	winning = loadAnimation("assets/win2.png", "assets/win3.png");
+	walking = loadAnimation(
+			"assets/1.png", "assets/2.png", "assets/3.png", "assets/4.png", 
+			"assets/5.png", "assets/6.png");
+	jumping = loadAnimation(
+			"assets/jump1.png", "assets/jump2.png", 
+			"assets/frontal-jump.png");
+	dying = loadAnimation(
+			"assets/die1.png", "assets/die2.png", "assets/die3.png", 
+			"assets/die4.png", "assets/die5.png");
+	coin = loadAnimation(
+			"assets/coin1.png", "assets/coin2.png", "assets/coin3.png", 
+			"assets/coin4.png");
+	hovering = loadAnimation(
+			"assets/ghost1.png", "assets/ghost2.png", "assets/ghost3.png", 
+			"assets/ghost4.png");
 }
 
 function setup() {
@@ -135,7 +174,7 @@ function Game() {
 		for (var i = 0; i < this.levels.length; i++) {
 			this.maxScore += this.levels[i].collectables.length;
 		}
-		// Initialise arrays of scenery objects
+		// Initialize arrays of scenery objects
 		trees = [{
 				x: -520,
 				height: 120,
@@ -396,7 +435,7 @@ function Game() {
 
 		// Draw ready to start message
 		if (this.state == gameState.READY) {
-			this.drawMessage("Ready when you are.\r\nPress space to start.");
+			this.drawMessage("Ready when you are.\r\nPress space to start collecting coins.");
 			return;
 		}
 		// Draw game over message if player run out of lives
@@ -407,7 +446,7 @@ function Game() {
 
 		// Draw game finished  message
 		if (this.state == gameState.GAME_FINISHED) {
-			this.drawMessage(`You did it!\r\n${this.score}/${this.maxScore} medals in ${elapsed} seconds.`);
+			this.drawMessage(`You did it!\r\n${this.score}/${this.maxScore} coins in ${elapsed} seconds.`);
 			return;
 		}
 
@@ -510,11 +549,11 @@ function Game() {
 		l.canyons.push(new Canyon(1800, 100));
 
 		l.collectables.push(new Collectable(-100, 350));
-		l.collectables.push(new Collectable(600, 350));
-		l.collectables.push(new Collectable(820, 370));
+		l.collectables.push(new Collectable(600, 400));
+		l.collectables.push(new Collectable(820, 350));
 		l.collectables.push(new Collectable(1200, 400));
-		l.collectables.push(new Collectable(1500, 370));
-		l.collectables.push(new Collectable(1650, 370));
+		l.collectables.push(new Collectable(1500, 350));
+		l.collectables.push(new Collectable(1650, 400));
 
 		return l;
 	}
@@ -533,10 +572,10 @@ function Game() {
 
 		l.collectables.push(new Collectable(-100, 350));
 		l.collectables.push(new Collectable(600, 350));
-		l.collectables.push(new Collectable(820, 370));
-		l.collectables.push(new Collectable(1200, 400));
-		l.collectables.push(new Collectable(1500, 370));
-		l.collectables.push(new Collectable(1650, 370));
+		l.collectables.push(new Collectable(820, 400));
+		l.collectables.push(new Collectable(1200, 350));
+		l.collectables.push(new Collectable(1500, 400));
+		l.collectables.push(new Collectable(1650, 350));
 
 		l.enemies.push(new Enemy(450, game.floor - 5, 200));
 		l.enemies.push(new Enemy(950, game.floor - 5, 250));
@@ -721,7 +760,8 @@ function Level(title, flagpolePosition) {
 		this.flagpole.draw();
 
 		if (game.state == gameState.RUNNING) {
-			game.state = this.flagpole.isReached ? gameState.LEVEL_FINISHED : game.state;
+			game.state = 
+				this.flagpole.isReached ? gameState.LEVEL_FINISHED : game.state;
 		}
 	}
 }
@@ -812,7 +852,8 @@ function Character(x, y) {
 		if (this.isFalling) {
 			//Check if the game character is on one of the platforms
 			for (var i = 0; i < game.currentLevel.platforms.length; i++) {
-				this.isOnPlatform = game.currentLevel.platforms[i].checkContact(this.worldX, this.pos.y);
+				var level = 	game.currentLevel.platforms[i];
+				this.isOnPlatform = level.checkContact(this.worldX, this.pos.y);
 				if (this.isOnPlatform) {
 					break;
 				}
@@ -976,60 +1017,6 @@ function Character(x, y) {
 		dying.frameDelay = 10;
 		animation(dying, 0, 0);
 		pop();
-		return;
-		push();
-		// Move origin to the center of the game character
-		// and rotate by 180 degrees
-		translate(this.pos.x, this.pos.y);
-
-		// trunk
-		fill(255, 0, 0);
-		rect(-10, -35, 20, 30);
-		// hands
-		fill(0);
-		push();
-		translate(-15, -20);
-		translate(6, 2);
-		rotate(PI / 2);
-		rect(0, 0, 5, 14, 2);
-		pop();
-		push();
-		translate(10, -20);
-		translate(-1, 7);
-		rotate(-PI / 2);
-		rect(0, 0, 5, 14, 2);
-		pop();
-		// head
-		fill(200, 150, 150);
-		stroke(0);
-		strokeWeight(2);
-		ellipse(0, -30, 29);
-		//eyes
-		fill(0);
-		noStroke();
-		ellipse(-7, -30, 5);
-		ellipse(7, -30, 5);
-		//lips
-		stroke(0);
-		strokeWeight(2);
-		line(-5, -22, 5, -22);
-		// hat
-		fill(0);
-		noStroke();
-		strokeWeight(1);
-		beginShape();
-		curveVertex(15, -30);
-		curveVertex(-20, -30);
-		curveVertex(-20, -65);
-		curveVertex(20, -65);
-		curveVertex(20, -30);
-		curveVertex(15, -30);
-		endShape();
-		// boots
-		fill(0);
-		rect(-10, -10, 8, 8);
-		rect(2, -8, 8, 8);
-		pop();
 	}
 
 	this.jumpingFacingForwards = function () {
@@ -1040,54 +1027,6 @@ function Character(x, y) {
 		jumping.changeFrame(2);
 		animation(jumping, 0, 0);
 		pop();
-		return;
-		// trunk
-		fill(255, 0, 0);
-		rect(this.pos.x - 10, this.pos.y - 35, 20, 30);
-		// hands
-		fill(0);
-		push();
-		translate(this.pos.x - 15, this.pos.y - 20);
-		translate(6, 2);
-		rotate(PI / 2);
-		rect(0, 0, 5, 14, 2);
-		pop();
-		push();
-		translate(this.pos.x + 10, this.pos.y - 20);
-		translate(-1, 7);
-		rotate(-PI / 2);
-		rect(0, 0, 5, 14, 2);
-		pop();
-		// head
-		fill(200, 150, 150);
-		stroke(0);
-		strokeWeight(2);
-		ellipse(this.pos.x, this.pos.y - 30, 29);
-		//eyes
-		fill(0);
-		noStroke();
-		ellipse(this.pos.x - 7, this.pos.y - 30, 5);
-		ellipse(this.pos.x + 7, this.pos.y - 30, 5);
-		//lips
-		stroke(0);
-		strokeWeight(2);
-		line(this.pos.x - 5, this.pos.y - 22, this.pos.x + 5, this.pos.y - 22);
-		// hat
-		fill(0);
-		noStroke();
-		strokeWeight(1);
-		beginShape();
-		curveVertex(this.pos.x - 15, this.pos.y - 30);
-		curveVertex(this.pos.x - 20, this.pos.y - 30);
-		curveVertex(this.pos.x - 20, this.pos.y - 65);
-		curveVertex(this.pos.x + 20, this.pos.y - 65);
-		curveVertex(this.pos.x + 20, this.pos.y - 30);
-		curveVertex(this.pos.x + 15, this.pos.y - 30);
-		endShape();
-		// boots
-		fill(0);
-		rect(this.pos.x - 10, this.pos.y - 10, 8, 8);
-		rect(this.pos.x + 2, this.pos.y - 8, 8, 8);
 	}
 
 	this.walkingLeft = function () {
@@ -1097,69 +1036,6 @@ function Character(x, y) {
 		applyMatrix(-1, 0, 0, 1, 0, 0);
 		animation(walking, 0, 0);
 		pop();
-		return;
-
-		fill(0);
-		// forward hand
-		push();
-		translate(this.pos.x - 15, this.pos.y - 20);
-		translate(9, 2);
-		rotate(PI / 6);
-		rect(0, 0, 5, 14, 2);
-		pop();
-		// trunk leaning forward
-		push();
-		translate(this.pos.x - 8, this.pos.y - 20);
-		translate(1, 4);
-		rotate(-PI / 8);
-		fill(255, 0, 0);
-		rect(0, 0, 15, 16);
-		pop();
-		// back hand
-		push();
-		translate(this.pos.x + 10, this.pos.y - 20);
-		translate(-5, 6);
-		rotate(-PI / 2);
-		rect(0, 0, 5, 14, 2);
-		pop();
-		// head
-		fill(200, 150, 150);
-		stroke(0);
-		strokeWeight(2);
-		ellipse(this.pos.x, this.pos.y - 30, 29);
-		// eyes
-		fill(0);
-		noStroke();
-		ellipse(this.pos.x - 7, this.pos.y - 30, 5);
-		// lips
-		stroke(0);
-		strokeWeight(2);
-		line(this.pos.x - 10, this.pos.y - 22, this.pos.x - 3, this.pos.y - 22);
-		// hat
-		fill(0);
-		noStroke();
-		strokeWeight(1);
-		beginShape();
-		curveVertex(this.pos.x - 15, this.pos.y - 31);
-		curveVertex(this.pos.x - 20, this.pos.y - 31);
-		curveVertex(this.pos.x - 12, this.pos.y - 70);
-		curveVertex(this.pos.x + 23, this.pos.y - 65);
-		curveVertex(this.pos.x + 20, this.pos.y - 26);
-		curveVertex(this.pos.x + 15, this.pos.y - 26);
-		endShape();
-		// back leg
-		push();
-		translate(this.pos.x + 6, this.pos.y - 5);
-		translate(1, 1);
-		rotate(-PI / 3);
-		rect(0, 0, 8, 8);
-		pop();
-		// forward leg
-		push();
-		translate(this.pos.x - 6, this.pos.y - 5);
-		translate(4, 1);
-		rect(0, 0, 8, 7);
-		pop();
 	}
 
 	this.walkingRight = function () {
@@ -1167,69 +1043,6 @@ function Character(x, y) {
 		translate(this.pos.x + 5, this.pos.y - 50);
 		scale(1 / 2);
 		animation(walking, 0, 0);
-		pop();
-		return;
-
-		fill(0);
-		// forward hand
-		push();
-		translate(this.pos.x + 10, this.pos.y - 20);
-		translate(-6, 5);
-		rotate(-PI / 6);
-		rect(0, 0, 5, 14, 2);
-		pop();
-		// trunk leaning forward
-		push();
-		translate(this.pos.x - 8, this.pos.y - 20);
-		translate(3, -2);
-		rotate(PI / 8);
-		fill(255, 0, 0);
-		rect(0, 0, 15, 16);
-		pop();
-		// back hand
-		push();
-		translate(this.pos.x - 15, this.pos.y - 20);
-		translate(10, 1);
-		rotate(PI / 2);
-		rect(0, 0, 5, 14, 2);
-		pop();
-		// head
-		fill(200, 150, 150);
-		stroke(0);
-		strokeWeight(2);
-		ellipse(this.pos.x, this.pos.y - 30, 29);
-		// eyes
-		fill(0);
-		noStroke();
-		ellipse(this.pos.x + 7, this.pos.y - 30, 5);
-		// lips
-		stroke(0);
-		strokeWeight(2);
-		line(this.pos.x + 3, this.pos.y - 22, this.pos.x + 10, this.pos.y - 22);
-		// hat
-		fill(0);
-		noStroke();
-		strokeWeight(1);
-		beginShape();
-		curveVertex(this.pos.x - 15, this.pos.y - 26);
-		curveVertex(this.pos.x - 20, this.pos.y - 26);
-		curveVertex(this.pos.x - 21, this.pos.y - 65);
-		curveVertex(this.pos.x + 14, this.pos.y - 70);
-		curveVertex(this.pos.x + 20, this.pos.y - 31);
-		curveVertex(this.pos.x + 15, this.pos.y - 31);
-		endShape();
-		// back leg
-		push();
-		translate(this.pos.x - 6, this.pos.y - 5);
-		translate(-3, -6);
-		rotate(PI / 3);
-		rect(0, 0, 8, 8);
-		pop();
-		// forward leg
-		push();
-		translate(this.pos.x - 6, this.pos.y - 5);
-		translate(2, 1);
-		rect(0, 0, 8, 7);
 		pop();
 	}
 
@@ -1240,71 +1053,6 @@ function Character(x, y) {
 		jumping.playing = false;
 		jumping.changeFrame(0);
 		animation(jumping, 0, 0);
-		pop();
-		return;
-
-		fill(0);
-		// forward hand
-		push();
-		translate(this.pos.x + 10, this.pos.y - 20);
-		translate(-15, 0);
-		rotate(PI / 3);
-		rect(0, 0, 5, 14, 2);
-		pop();
-		// forward leg
-		push();
-		translate(this.pos.x + 6, this.pos.y - 5);
-		translate(-8, 1);
-		rotate(-PI / 8);
-		rect(0, 0, 8, 6);
-		pop();
-		// trunk leaning forward
-		push();
-		translate(this.pos.x - 8, this.pos.y - 20);
-		translate(3, -2);
-		rotate(PI / 8);
-		fill(255, 0, 0);
-		rect(0, 0, 15, 16);
-		pop();
-		// back hand
-		push();
-		translate(this.pos.x - 15, this.pos.y - 20);
-		translate(15, 5);
-		rotate(-PI / 3);
-		rect(0, 0, 5, 14, 2);
-		pop();
-		// head
-		fill(200, 150, 150);
-		stroke(0);
-		strokeWeight(2);
-		ellipse(this.pos.x, this.pos.y - 30, 29);
-		// eyes
-		fill(0);
-		noStroke();
-		ellipse(this.pos.x + 7, this.pos.y - 30, 5);
-		// lips
-		stroke(0);
-		strokeWeight(2);
-		line(this.pos.x + 3, this.pos.y - 22, this.pos.x + 10, this.pos.y - 22);
-		// hat
-		fill(0);
-		noStroke();
-		strokeWeight(1);
-		beginShape();
-		curveVertex(this.pos.x - 15, this.pos.y - 26);
-		curveVertex(this.pos.x - 20, this.pos.y - 26);
-		curveVertex(this.pos.x - 21, this.pos.y - 60);
-		curveVertex(this.pos.x + 14, this.pos.y - 67);
-		curveVertex(this.pos.x + 20, this.pos.y - 31);
-		curveVertex(this.pos.x + 15, this.pos.y - 31);
-		endShape();
-		// back leg
-		push();
-		translate(this.pos.x - 6, this.pos.y - 5);
-		translate(-4, -2.5);
-		rotate(0);
-		fill(0);
-		rect(0, 0, 8, 6);
 		pop();
 	}
 
@@ -1317,75 +1065,7 @@ function Character(x, y) {
 		jumping.changeFrame(0);
 		animation(jumping, 0, 0);
 		pop();
-		return;
-
-		fill(0);
-		// back hand
-		push();
-		translate(this.pos.x + 10, this.pos.y - 20);
-		translate(-6, 5);
-		rotate(-PI / 3);
-		rect(0, 0, 5, 14, 2);
-		pop();
-		// forward leg
-		push();
-		translate(this.pos.x - 6, this.pos.y - 5);
-		translate(3, -2.5);
-		rotate(PI / 8);
-		rect(0, 0, 8, 6);
-		pop();
-		// trunk leaning forward
-		push();
-		translate(this.pos.x - 8, this.pos.y - 20);
-		translate(1, 4);
-		rotate(-PI / 8);
-		fill(255, 0, 0);
-		rect(0, 0, 15, 16);
-		pop();
-		// forward hand
-		push();
-		translate(this.pos.x + 10, this.pos.y - 20);
-		translate(-11, 2);
-		rotate(PI / 3);
-		rect(0, 0, 5, 14, 2);
-		pop();
-		// head
-		fill(200, 150, 150);
-		stroke(0);
-		strokeWeight(2);
-		ellipse(this.pos.x, this.pos.y - 30, 29);
-		// eyes
-		fill(0);
-		noStroke();
-		ellipse(this.pos.x - 7, this.pos.y - 30, 5);
-		// lips
-		stroke(0);
-		strokeWeight(2);
-		line(this.pos.x - 10, this.pos.y - 22, this.pos.x - 3, this.pos.y - 22);
-		// hat
-		fill(0);
-		noStroke();
-		strokeWeight(1);
-		beginShape();
-		curveVertex(this.pos.x - 15, this.pos.y - 31);
-		curveVertex(this.pos.x - 20, this.pos.y - 31);
-		curveVertex(this.pos.x - 12, this.pos.y - 67);
-		curveVertex(this.pos.x + 23, this.pos.y - 60);
-		curveVertex(this.pos.x + 20, this.pos.y - 26);
-		curveVertex(this.pos.x + 15, this.pos.y - 26);
-		endShape();
-		// back leg
-		fill(0);
-		push();
-		translate(this.pos.x + 6, this.pos.y - 5);
-		translate(-2, -2);
-		rotate(0);
-		rect(0, 0, 8, 6);
-		pop();
 	}
-
-
-
 }
 
 function Enemy(x, y, range, startingDirection = 1) {
@@ -1417,13 +1097,6 @@ function Enemy(x, y, range, startingDirection = 1) {
 		scale(1 / 3);
 		hovering.frameDelay = 10;	
 		animation(hovering, 0, 0);
-		pop();
-		return;
-		push();
-		textAlign(CENTER);
-		textSize(50);
-		var emoji = "👻"; // ghost
-		text(emoji, this.currentX, this.y - 5);
 		pop();
 	}
 
@@ -1603,7 +1276,8 @@ function Platform(x, length, level = 1, range = 0, startingDirection = 1) {
 		pop();
 	}
 	this.checkContact = function (gc_x, gc_y) {
-		if (gc_x + 15 > this.currentX - this.length / 2 && gc_x < this.currentX + this.length / 2) {
+		if (gc_x + 15 > this.currentX - this.length / 2 && 
+			  gc_x < this.currentX + this.length / 2) {
 			var d = this.y - 10 - gc_y;
 			if (d >= 0 && d < 5) {
 				return true;
@@ -1630,25 +1304,20 @@ function Flagpole(x) {
 		strokeCap(SQUARE);
 		line(this.x, game.floor, this.x, game.floor - 150);
 		// flag
-		textSize(50);
-		var emoji = "\u{1F1EC}\u{1F1E7}"; // UK flag
 		if (this.isReached) {
 			if (!levelUpSound.isPlaying() && !levelUpSoundPlayed) {
 				levelUpSound.play();
 				levelUpSoundPlayed = true;
 			}
-
-			image(ukFlagImage, this.x + 3, game.floor - 148,
-				ukFlagImage.width / 16, ukFlagImage.height / 16,
-				0, 0,
+			image(
+				ukFlagImage, this.x + 3, game.floor - 148,
+				ukFlagImage.width / 16, ukFlagImage.height / 16, 0, 0,
 				ukFlagImage.width, ukFlagImage.height);
-			//text(emoji, this.x, game.floor - 110);
 		} else {
-			image(ukFlagImage, this.x + 3, game.floor - ukFlagImage.height / 16,
-				ukFlagImage.width / 16, ukFlagImage.height / 16,
-				0, 0,
+			image(
+				ukFlagImage, this.x + 3, game.floor - ukFlagImage.height / 16,
+				ukFlagImage.width / 16, ukFlagImage.height / 16, 0, 0,
 				ukFlagImage.width, ukFlagImage.height);
-			//text(emoji, this.x, game.floor);
 		}
 		pop();
 	}
